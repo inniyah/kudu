@@ -39,9 +39,8 @@ kudu_SOURCES = kudu.c kudu.h \
 		uiplugin.c uiplugin.h \
 		gui_options.c gui_options.h
 
-AM_CPPFLAGS = -DKUDU_DATADIR=\"$(pkgdatadir)\"
+AM_CPPFLAGS = -DKUDU_DATADIR=\"$(pkgdatadir)\" @GSTUFF_CFLAGS@ @GTKGLEXT_CFLAGS@
 LIBS =  @LIBS@ @GSTUFF_LIBS@ @GTKGLEXT_LIBS@
-INCLUDES = @GSTUFF_CFLAGS@ @GTKGLEXT_CFLAGS@
 
 if SUPPORT_PYTHON
 kudu_SOURCES += scripts.c scripts.h \
@@ -49,7 +48,7 @@ kudu_SOURCES += scripts.c scripts.h \
 		objectsmodule.c objectsmodule.h \
 		guimodule.c guimodule.h 
 LIBS += @PYTHON_EXTRA_LIBS@ @PYTHON_LDFLAGS@
-INCLUDES += @PYTHON_CPPFLAGS@
+AM_CPPFLAGS += @PYTHON_CPPFLAGS@
 endif
 
 
