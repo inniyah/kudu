@@ -79,6 +79,15 @@ int kudu_program_skeleton_calculate(void);
 int kudu_program_update_skin(void);
 int kudu_program_objects_update(void);
 
+int kudu_graphics_init_bone_lists(void);
+int kudu_draw_mouse_rectangle(int sx, int sy, int ex, int ey);
+int kudu_about_dialog_run(void);
+int kudu_gui_object_edit(KuduObject *object);
+int kudu_gui_vertex_properties_reset(KuduSelectionList *selected_items);
+int kudu_gui_show_cursor(void);
+int kudu_camera_ortho(KuduCamera *camera, int on);
+int kudu_menu_item_set_visible(K_MainMenu item, int visible);
+int kudu_stack_list_destroy(void);
 
 #endif /* KUDU_H_INCLUDED */
 

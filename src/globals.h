@@ -659,7 +659,7 @@ typedef struct {
 } K_PROGRAM;
 
 
-/* Global Varibles */
+/* Global Variables */
 
 extern K_PROGRAM program;
 

@@ -41,6 +41,9 @@ typedef enum {
 
 extern KuduError d_error;
 
+/* Error Function */
+
+int kudu_error(KuduError error);
 
 #endif /* KERROR_H_INCLUDED */
 

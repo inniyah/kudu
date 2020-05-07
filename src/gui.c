@@ -20,6 +20,7 @@
 /*                                                                            */
 /******************************************************************************/
 #include "gui.h"
+#include <gdk/gdkx.h>
 
 static int old_x, old_y;
 static GdkModifierType mask;

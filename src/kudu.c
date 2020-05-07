@@ -1364,7 +1364,7 @@ static void main_toolbar_action(GtkWidget *item, unsigned int action)
 	if (GTK_IS_TOGGLE_TOOL_BUTTON(item)) 
 		if (!gtk_toggle_tool_button_get_active(GTK_TOGGLE_TOOL_BUTTON(item))) return;
 
-	switch (action) {
+	switch ((uintptr_t)action) {
 		case KT_FILE_OPEN:
 			main_menu_action(NULL, GINT_TO_POINTER(KM_FILE_OPEN));
 			break;

@@ -111,7 +111,7 @@ GtkToolItem *kudu_toolbar_add_radio_button(unsigned int action, char *label, cha
 	int position;
 
 	tool_item = gtk_radio_tool_button_new(radio_group);
-	last_signal_id = g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)action);
+	last_signal_id = g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)(uintptr_t)action);
 
 	if (label != NULL) gtk_tool_button_set_label(GTK_TOOL_BUTTON(tool_item), label);
 	if (image_f != NULL) {
@@ -134,7 +134,7 @@ GtkToolItem *kudu_toolbar_add_stock_item(unsigned int action, char *label, char 
 	GtkToolItem *tool_item;
 
 	tool_item = gtk_tool_button_new_from_stock(stock);
-	last_signal_id = g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)action);
+	last_signal_id = g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)(uintptr_t)action);
 
 	gtk_tool_button_set_label(GTK_TOOL_BUTTON(tool_item), label);
 
