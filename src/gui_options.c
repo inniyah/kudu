@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -335,14 +335,14 @@ int nav_profile[NAVI_NUM_PROFILES][20] = {  {MOUSE_LEFT_BUTTON, MOUSE_RIGHT_BUTT
 			   MOUSE_RIGHT_BUTTON, 8, CAMERA_MODE_FIXED, 1, 5, 0},
 
 			  {MOUSE_LEFT_BUTTON, MOUSE_RIGHT_BUTTON,			/* 3ds Max */
-			   MOUSE_MIDDLE_BUTTON, 8, CAMERA_MODE_FIXED, 1, 3, 0,
-			   MOUSE_MIDDLE_BUTTON, 0, CAMERA_MODE_FIXED, 1, 3, 0,
-			   MOUSE_MIDDLE_BUTTON, 12, CAMERA_MODE_FIXED, 1, 0, 0},
+			   MOUSE_MIDDLE_BUTTON, 8, CAMERA_MODE_ANY, 1, 3, 0,
+			   MOUSE_MIDDLE_BUTTON, 0, CAMERA_MODE_ANY, 1, 3, 0,
+			   MOUSE_MIDDLE_BUTTON, 12, CAMERA_MODE_ANY, 1, 0, 0},
 
 			  {MOUSE_LEFT_BUTTON, MOUSE_RIGHT_BUTTON,			/* Blender */
-			   MOUSE_MIDDLE_BUTTON, 0, CAMERA_MODE_FIXED, 1, 3, 0,
-			   MOUSE_MIDDLE_BUTTON, 1, CAMERA_MODE_FIXED, 1, 3, 0,
-			   MOUSE_MIDDLE_BUTTON, 4, CAMERA_MODE_FIXED, 1, 0, 0},
+			   MOUSE_MIDDLE_BUTTON, 0, CAMERA_MODE_ANY, 1, 3, 0,
+			   MOUSE_MIDDLE_BUTTON, 1, CAMERA_MODE_ANY, 1, 3, 0,
+			   MOUSE_MIDDLE_BUTTON, 4, CAMERA_MODE_ANY, 1, 0, 0},
 
 			  {MOUSE_LEFT_BUTTON, MOUSE_RIGHT_BUTTON,			/* MotionBuilder */
 			   MOUSE_LEFT_BUTTON, 5, CAMERA_MODE_FIXED, 1, 3, 0,

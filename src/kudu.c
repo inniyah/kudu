@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -137,6 +137,7 @@ gint kudu_program_exit(GtkWidget *widget, gpointer data)
 		kudu_selection_list_destroy(selected_bones_list);
 		kudu_camera_destroy(camera);
 		kudu_stack_list_destroy();
+		kudu_hits_list_destroy();
 		kudu_options_finish();
 		#ifdef SUPPORT_PYTHON
 		kudu_script_list_destroy();
@@ -447,41 +448,41 @@ int kudu_program_set_sub_mode(int MODE)
 
 	switch (kudu_options_get_int_no(KO_BONES_DETAIL, program.mode_opt_no)) {
 		case SKELETON_DETAIL_SHOW_ALL:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_NAMES);
+			kudu_menu_item_activate_no_call(KM_VIEW_BONES_SHOW_NAMES);
 			break;
 		case SKELETON_DETAIL_SHOW_SELECTED:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_SELECTED_NAMES);
+			kudu_menu_item_activate_no_call(KM_VIEW_BONES_SHOW_SELECTED_NAMES);
 			break;
 		case SKELETON_DETAIL_SHOW_NONE:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_HIDE_NAMES);
+			kudu_menu_item_activate_no_call(KM_VIEW_BONES_HIDE_NAMES);
 			break;
 	}
 
 	switch(kudu_options_get_int_no(KO_BONES_AXES, program.mode_opt_no)) {
 		case SKELETON_DETAIL_SHOW_ALL:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_AXES);
+			kudu_menu_item_activate_no_call(KM_VIEW_BONES_SHOW_AXES);
 			break;
 		case SKELETON_DETAIL_SHOW_SELECTED:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_SELECTED_AXES);
+			kudu_menu_item_activate_no_call(KM_VIEW_BONES_SHOW_SELECTED_AXES);
 			break;
 		case SKELETON_DETAIL_SHOW_NONE:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_HIDE_AXES);
+			kudu_menu_item_activate_no_call(KM_VIEW_BONES_HIDE_AXES);
 			break;
 	}
 
-	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_BONES_SHOW, kudu_options_get_int_no(KO_BONES_VISIBLE, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_VIEW_BONES_SHOW, kudu_options_get_int_no(KO_BONES_VISIBLE, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_BONES_SHOW_JOINTS, kudu_options_get_int_no(KO_JOINTS_VISIBLE, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_VIEW_BONES_SHOW_JOINTS, kudu_options_get_int_no(KO_JOINTS_VISIBLE, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_SHOW, kudu_options_get_int_no(KO_SKIN_VISIBLE, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_VIEW_SKIN_SHOW, kudu_options_get_int_no(KO_SKIN_VISIBLE, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_LIT, kudu_options_get_int_no(KO_SKIN_LIT, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_VIEW_SKIN_LIT, kudu_options_get_int_no(KO_SKIN_LIT, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_SMOOTH, kudu_options_get_int_no(KO_SKIN_SMOOTH, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_VIEW_SKIN_SMOOTH, kudu_options_get_int_no(KO_SKIN_SMOOTH, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_REAL_COLOURS, kudu_options_get_int_no(KO_SKIN_REAL_COLOURS, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_VIEW_SKIN_REAL_COLOURS, kudu_options_get_int_no(KO_SKIN_REAL_COLOURS, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_TEXTURED, kudu_options_get_int_no(KO_SKIN_TEXTURED, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_VIEW_SKIN_TEXTURED, kudu_options_get_int_no(KO_SKIN_TEXTURED, program.mode_opt_no));
 
 	a = kudu_options_get_int_no(KO_VIEW_ORTHOGRAPHIC, program.mode_opt_no);
 	kudu_menu_check_item_set_state(KM_VIEW_ORTHOGRAPHIC, a);
@@ -489,13 +490,13 @@ int kudu_program_set_sub_mode(int MODE)
 
 	switch (kudu_options_get_int_no(KO_SKIN_DETAIL, program.mode_opt_no)) {
 		case K_RENDER_POINTS:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_SKIN_VERTEX);
+			kudu_menu_item_activate_no_call(KM_VIEW_SKIN_VERTEX);
 			break;
 		case K_RENDER_EDGES:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_SKIN_EDGE);
+			kudu_menu_item_activate_no_call(KM_VIEW_SKIN_EDGE);
 			break;
 		case K_RENDER_FACES:
-			kudu_menu_item_activate_no_call(KM_PROGRAM_SKIN_FACE);
+			kudu_menu_item_activate_no_call(KM_VIEW_SKIN_FACE);
 			break;
 	}
 
@@ -1283,66 +1284,66 @@ static void main_menu_action(GtkWidget *menu_item, gpointer callback_action)
 		case KM_PROGRAM_SUB_MODE_4:
 			kudu_program_set_sub_mode(PROGRAM_MODE_VIEW);
 			break;
-		case KM_PROGRAM_BONES_SHOW:
+		case KM_VIEW_BONES_SHOW:
 			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
 			kudu_options_set_int_no(KO_BONES_VISIBLE, program.mode_opt_no, a);
 			kudu_program_skeleton_list_regen();
 			break;
-		case KM_PROGRAM_BONES_SHOW_JOINTS:
+		case KM_VIEW_BONES_SHOW_JOINTS:
 			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
 			kudu_options_set_int_no(KO_JOINTS_VISIBLE, program.mode_opt_no, a);
 			kudu_program_skeleton_list_regen();
 			break;
-		case KM_PROGRAM_BONES_SHOW_NAMES:
+		case KM_VIEW_BONES_SHOW_NAMES:
 			kudu_program_set_skeleton_detail(SKELETON_DETAIL_SHOW_ALL);
 			break;
-		case KM_PROGRAM_BONES_SHOW_SELECTED_NAMES:
+		case KM_VIEW_BONES_SHOW_SELECTED_NAMES:
 			kudu_program_set_skeleton_detail(SKELETON_DETAIL_SHOW_SELECTED);
 			break;
-		case KM_PROGRAM_BONES_HIDE_NAMES:
+		case KM_VIEW_BONES_HIDE_NAMES:
 			kudu_program_set_skeleton_detail(SKELETON_DETAIL_SHOW_NONE);
 			break;
-		case KM_PROGRAM_BONES_SHOW_AXES:
+		case KM_VIEW_BONES_SHOW_AXES:
 			kudu_program_set_skeleton_axes(SKELETON_DETAIL_SHOW_ALL);
 			break;
-		case KM_PROGRAM_BONES_SHOW_SELECTED_AXES:
+		case KM_VIEW_BONES_SHOW_SELECTED_AXES:
 			kudu_program_set_skeleton_axes(SKELETON_DETAIL_SHOW_SELECTED);
 			break;
-		case KM_PROGRAM_BONES_HIDE_AXES:
+		case KM_VIEW_BONES_HIDE_AXES:
 			kudu_program_set_skeleton_axes(SKELETON_DETAIL_SHOW_NONE);
 			break;
-		case KM_PROGRAM_SKIN_SHOW:
+		case KM_VIEW_SKIN_SHOW:
 			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
 			kudu_options_set_int_no(KO_SKIN_VISIBLE, program.mode_opt_no, a);
 			kudu_program_skin_list_regen();
 			break;
-		case KM_PROGRAM_SKIN_SMOOTH:
+		case KM_VIEW_SKIN_SMOOTH:
 			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
 			kudu_options_set_int_no(KO_SKIN_SMOOTH, program.mode_opt_no, a);
 			kudu_program_skin_list_regen();
 			break;
-		case KM_PROGRAM_SKIN_LIT:
+		case KM_VIEW_SKIN_LIT:
 			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
 			kudu_options_set_int_no(KO_SKIN_LIT, program.mode_opt_no, a);
 			kudu_program_skin_list_regen();
 			break;
-		case KM_PROGRAM_SKIN_REAL_COLOURS:
+		case KM_VIEW_SKIN_REAL_COLOURS:
 			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
 			kudu_options_set_int_no(KO_SKIN_REAL_COLOURS, program.mode_opt_no, a);
 			kudu_program_skin_list_regen();
 			break;
-		case KM_PROGRAM_SKIN_TEXTURED:
+		case KM_VIEW_SKIN_TEXTURED:
 			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
 			kudu_options_set_int_no(KO_SKIN_TEXTURED, program.mode_opt_no, a);
 			kudu_program_skin_list_regen();
 			break;
-		case KM_PROGRAM_SKIN_VERTEX:
+		case KM_VIEW_SKIN_VERTEX:
 			kudu_program_set_skin_detail(K_RENDER_POINTS);
 			break;
-		case KM_PROGRAM_SKIN_EDGE:
+		case KM_VIEW_SKIN_EDGE:
 			kudu_program_set_skin_detail(K_RENDER_EDGES);
 			break;
-		case KM_PROGRAM_SKIN_FACE:
+		case KM_VIEW_SKIN_FACE:
 			kudu_program_set_skin_detail(K_RENDER_FACES);
 			break;
 
@@ -1428,6 +1429,9 @@ void kudu_program_init_objects(void)
 
 	/* Create the viewing camera */
 	camera = kudu_camera_new();
+
+	/* Init the hit list */
+	kudu_hits_list_init();
 
 	/* Object selection callback */
 	kudu_selection_set_object_selector(kudu_program_select_object);
@@ -1831,6 +1835,7 @@ static gboolean reshape(GtkWidget *widget, GdkEventConfigure *event, gpointer da
 	return FALSE;
 }
 
+
 static gboolean key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
 	int kp;
@@ -1844,60 +1849,26 @@ static gboolean key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	KuduVertex *vertex, *vl[3];
 	KuduBone *bone;
 	KuduMaterial *material;
-	int vc, cam_tumble[6], cam_track[6], cam_dolly[6];
-	unsigned int modifiers = 0;
+	unsigned int modifiers = 0, event_type = event->type;
 
-	kudu_options_get_int(KO_CAMERA_TUMBLE, 6, cam_tumble);
-	kudu_options_get_int(KO_CAMERA_TRACK, 6, cam_track);
-	kudu_options_get_int(KO_CAMERA_DOLLY, 6, cam_dolly);
+	if ((event->state & GDK_SHIFT_MASK) || (event->keyval == GDK_Shift_R) || (event->keyval == GDK_Shift_L)) modifiers += GDK_SHIFT_MASK;
+	if ((event->state & GDK_CONTROL_MASK) || (event->keyval == GDK_Control_R) || (event->keyval == GDK_Control_L)) modifiers += GDK_CONTROL_MASK;
+	if ((event->state & GDK_MOD1_MASK) || (event->keyval == GDK_Alt_R) || (event->keyval == GDK_Alt_L)) modifiers += GDK_MOD1_MASK;
 
-	if (event->state & GDK_SHIFT_MASK) modifiers += GDK_SHIFT_MASK;
-	if (event->state & GDK_CONTROL_MASK) modifiers += GDK_CONTROL_MASK;
-	if (event->state & GDK_MOD1_MASK) modifiers += GDK_MOD1_MASK;
+	program.mouse.modifiers = modifiers;
 
-	if ((camera->mode != CAMERA_MODE_FIXED) && (event->type == GDK_KEY_RELEASE)) {
-		switch (camera->mode) {
-			case CAMERA_MODE_TUMBLE:
-				if (modifiers != cam_tumble[1]) break;
-				if (cam_tumble[3]) kudu_camera_pop_mode(camera);
-				break;
-			case CAMERA_MODE_TRACK:
-				if (modifiers != cam_track[1]) break;
-				if (cam_track[3]) kudu_camera_pop_mode(camera);
-				break;
-			case CAMERA_MODE_DOLLY:
-				if (modifiers != cam_dolly[1]) break;
-				if (cam_dolly[3]) kudu_camera_pop_mode(camera);
-				break;
-		}
-	} else if (event->type == GDK_KEY_PRESS) {
-		/* Camera tumble mode */
-		if ((cam_tumble[0] == MOUSE_USE_KEY) && (cam_tumble[5] == event->keyval) && (modifiers == cam_tumble[1])) {
-			if (camera->mode != CAMERA_MODE_TUMBLE) {
-				if ((cam_tumble[2] == CAMERA_MODE_ANY) || (cam_tumble[2] == camera->mode)) {
-					kudu_camera_push_mode(camera, CAMERA_MODE_TUMBLE);
-				}
-			} else kudu_camera_pop_mode(camera);
-		}
-
-		/* Camera track mode */
-		if ((cam_track[0] == MOUSE_USE_KEY) && (cam_track[5] == event->keyval) && (modifiers == cam_track[1])) {
-			if (camera->mode != CAMERA_MODE_TRACK) {
-				if ((cam_track[2] == CAMERA_MODE_ANY) || (cam_track[2] == camera->mode)) {
-					kudu_camera_push_mode(camera, CAMERA_MODE_TRACK);
-				}
-			} else kudu_camera_pop_mode(camera);
-		}
-
-		/* Camera dolly mode */
-		if ((cam_dolly[0] == MOUSE_USE_KEY) && (cam_dolly[5] == event->keyval) && (modifiers == cam_dolly[1])) {
-			if (camera->mode != CAMERA_MODE_DOLLY) {
-				if ((cam_dolly[2] == CAMERA_MODE_ANY) || (cam_dolly[2] == camera->mode)) {
-					kudu_camera_push_mode(camera, CAMERA_MODE_DOLLY);
-				}
-			} else kudu_camera_pop_mode(camera);
-		}
+	if (event_type == GDK_KEY_RELEASE) {
+		if ((event->keyval == GDK_Shift_R) || (event->keyval == GDK_Shift_L)) program.mouse.modifiers -= GDK_SHIFT_MASK;
+		if ((event->keyval == GDK_Control_R) || (event->keyval == GDK_Control_L)) program.mouse.modifiers -= GDK_CONTROL_MASK;
+		if ((event->keyval == GDK_Alt_R) || (event->keyval == GDK_Alt_L)) program.mouse.modifiers -= GDK_MOD1_MASK;
 	}
+
+	if (event->type == GDK_KEY_PRESS) program.mouse.key = event->keyval;
+	else program.mouse.key = 0;
+
+	if (!program.mouse.dragging)
+		if (kudu_camera_determine_mode(camera, &program.mouse) > 0) return TRUE;
+
 
 	switch (event->keyval){
 		/*case GDK_q:
@@ -2114,87 +2085,40 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 	unsigned int state, button = event->button;
 	int X = (int)event->x;
 	int Y = (int)event->y;
-	int do_pick = TRUE, modifiers = 0, cam_tumble[5], cam_track[5], cam_dolly[5], cam_globals[2];
+	int a, do_pick = TRUE, modifiers = 0, cam_tumble[5], cam_track[5], cam_dolly[5], cam_globals[2];
 	GtkWidget *menu = NULL;
 	KuduBone *current_bone;
+
+	if (event->type == GDK_BUTTON_PRESS) state = BUTTON_DOWN;
+	else if (event->type == GDK_BUTTON_RELEASE) state = BUTTON_UP;
 
 	if (event->state & GDK_SHIFT_MASK) modifiers += GDK_SHIFT_MASK;
 	if (event->state & GDK_CONTROL_MASK) modifiers += GDK_CONTROL_MASK;
 	if (event->state & GDK_MOD1_MASK) modifiers += GDK_MOD1_MASK;
 
-	if (event->type == GDK_BUTTON_PRESS) state = BUTTON_DOWN;
-	else if (event->type == GDK_BUTTON_RELEASE) state = BUTTON_UP;
-
-	kudu_options_get_int(KO_CAMERA_GLOBALS, 2, cam_globals);
-	kudu_options_get_int(KO_CAMERA_TUMBLE, 5, cam_tumble);
-	kudu_options_get_int(KO_CAMERA_TRACK, 5, cam_track);
-	kudu_options_get_int(KO_CAMERA_DOLLY, 5, cam_dolly);
-
-	if (event->type == GDK_BUTTON_PRESS) {
-		/* Camera tumble mode */
-		if ((cam_tumble[0] == button) && (modifiers == cam_tumble[1])) {
-			if ((cam_tumble[2] == CAMERA_MODE_ANY) || (cam_tumble[2] == camera->mode)) {
-				kudu_camera_push_mode(camera, CAMERA_MODE_TUMBLE);
-				return TRUE;
-			}
-		}
-
-		/* Camera track mode */
-		if ((cam_track[0] == button) && (modifiers == cam_track[1])) {
-			if ((cam_track[2] == CAMERA_MODE_ANY) || (cam_track[2] == camera->mode)) {
-				kudu_camera_push_mode(camera, CAMERA_MODE_TRACK);
-				return TRUE;
-			}
-		}
-
-		/* Camera dolly mode */
-		if ((cam_dolly[0] == button) && (modifiers == cam_dolly[1])) {
-			if ((cam_dolly[2] == CAMERA_MODE_ANY) || (cam_dolly[2] == camera->mode)) {
-				kudu_camera_push_mode(camera, CAMERA_MODE_DOLLY);
-				return TRUE;
-			}
-		}
-
-		if ((button == cam_globals[0]) && (camera->mode != CAMERA_MODE_FIXED)) {
-			kudu_camera_pop_all_modes(camera);
-			return TRUE;
-		} else 
-		if ((button == cam_globals[1]) && (camera->mode != CAMERA_MODE_FIXED)) {
-			kudu_camera_push_mode(camera, CAMERA_MODE_RESET);
-			kudu_program_view_point_set();
-			return TRUE;
-		}
+	program.mouse.button = event->button;
+	program.mouse.state = state;
+	program.mouse.modifiers = modifiers;
 
 
-	} else if (event->type = GDK_BUTTON_RELEASE) {
-		if (camera->mode != CAMERA_MODE_FIXED) {
-			switch (camera->mode) {
-				case CAMERA_MODE_TUMBLE:
-					if (button != cam_tumble[0]) break;
-					if (cam_tumble[3]) kudu_camera_pop_mode(camera);
-					break;
-				case CAMERA_MODE_TRACK:
-					if (button != cam_track[0]) break;
-					if (cam_track[3]) kudu_camera_pop_mode(camera);
-					break;
-				case CAMERA_MODE_DOLLY:
-					if (button != cam_dolly[0]) break;
-					if (cam_dolly[3]) kudu_camera_pop_mode(camera);
-					break;
-			}
-		}
+	if ((program.mouse.drop_release > 0) && state == BUTTON_UP) {
+		program.mouse.drop_release--;
+		return TRUE;
 	}
 
+	if ((program.mouse.drop_push > 0) && state == BUTTON_DOWN) {
+		program.mouse.drop_push--;
+		return TRUE;
+	}
+
+	a = kudu_camera_determine_mode(camera, &program.mouse);
+
+	if (a > 0) {
+		if (a > 1) kudu_program_view_point_set();
+		return TRUE;
+	}
 
 	switch (button) {
-	/*	case MOUSE_MIDDLE_BUTTON:
-			if (state == BUTTON_DOWN) {
-				if ((camera->mode == CAMERA_MODE_TUMBLE) || (camera->mode == CAMERA_MODE_TRACK))
-					kudu_camera_push_mode(camera, CAMERA_MODE_DOLLY);
-			} else if (camera->mode == CAMERA_MODE_DOLLY) kudu_camera_pop_mode(camera);
-			else kudu_camera_push_mode(camera, CAMERA_MODE_TUMBLE);
-			break;*/
-
 		case MOUSE_RIGHT_BUTTON:
 			if (program.bone_mode != BONE_MODE_FIXED) {
 				kudu_bones_edit_unanchor(selected_bones_list, program.bone_mode);
@@ -2215,11 +2139,7 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 				kudu_program_edit_mode_set(EDIT_MODE_NONE);
 				kudu_program_update_skin();
 
-			}/* else if (camera->mode != CAMERA_MODE_FIXED) {
-				kudu_camera_push_mode(camera, CAMERA_MODE_RESET);
-				kudu_program_view_point_set();
-				do_pick = FALSE;
-			}*/ else if ((state == BUTTON_DOWN) && (camera->mode == CAMERA_MODE_FIXED)) {
+			} else if ((state == BUTTON_DOWN) && (camera->mode == CAMERA_MODE_FIXED)) {
 				if (program.mode == PROGRAM_MODE_EDIT) {
 					switch (program.sub_mode) {
 						case PROGRAM_MODE_SKELETON:
@@ -2271,11 +2191,6 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 				program.mouse.ex = X;
 				program.mouse.ey = Y;
 
-				/*if (camera->mode != CAMERA_MODE_FIXED) {
-					kudu_camera_pop_all_modes(camera);
-					do_pick = FALSE;
-				}*/
-
 				if (program.bone_mode != BONE_MODE_FIXED) {
 					kudu_program_bone_mode_set(BONE_MODE_FIXED);
 					do_pick = FALSE;
@@ -2308,6 +2223,8 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 
 	/* Retrieve the selection mode */
 	selection_mode = kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no);
+
+	kudu_hits_list_clear();
 
 	/* If we are selecting objects, but the object list is null, then stop */
 	if ((selection_mode == SELECT_OBJECTS) && (object == NULL)) return TRUE;

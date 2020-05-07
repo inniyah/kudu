@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -23,6 +23,88 @@
 
 static KuduSelection *do_selection = NULL;
 static int(*object_selector)(KuduObject*) = NULL;
+static KuduHitsList *hit_list = NULL;
+
+/* The "hits list" simply stores pointers in an array, allowing us to assiociate an "index" number
+   with a pointer for faster location.. (faster than directly searching through linked lists) */
+int kudu_hits_list_init(void)
+{
+	if (hit_list != NULL) return FALSE;
+
+	int a;
+
+	hit_list = (KuduHitsList*)malloc(sizeof(KuduHitsList));
+	if (hit_list == NULL) return FALSE;
+
+	/* The current position, this gets increased each time we "push" a pointer into the list */
+	hit_list->cpos = 0;
+
+	/* Allocate memory for the default amount of records */
+	hit_list->num_records = HL_DEFAULT_NUM;
+	hit_list->record = (KuduHit*)malloc(sizeof(KuduHit)*hit_list->num_records);
+
+	/* Init all pointers to NULL */
+	for (a = 0; a < hit_list->num_records; a++) hit_list->record[a].data = NULL;
+
+	return TRUE;
+}
+
+/* Close the hits list */
+int kudu_hits_list_destroy(void)
+{
+	if (hit_list == NULL) return FALSE;
+
+	hit_list->cpos = 0;
+	hit_list->num_records = 0;
+	free(hit_list->record);
+	free(hit_list);
+	hit_list = NULL;
+
+	return TRUE;
+}
+
+/* Pushes a pointer into the hits list and returns the index value, this value can be passed into
+   OpenGL's "name stack" for selection mode */
+unsigned int kudu_hits_list_push_item(void *data)
+{
+	if (hit_list == NULL) return -1;
+
+	unsigned int cpos = hit_list->cpos;
+
+	/* Automatically increase the allocated memory if we need to add more records than the currect amount */
+	if (cpos >= hit_list->num_records) {
+		hit_list->num_records += HL_DEFAULT_INC;
+		hit_list->record = (KuduHit*)realloc(hit_list->record, sizeof(KuduHit)*hit_list->num_records);
+	}
+
+	hit_list->record[cpos].data = data;
+
+	hit_list->cpos++;
+
+	return cpos;
+}
+
+/* Retrieve a pointer from the hits list */
+void *kudu_hits_list_get_item(unsigned int num)
+{
+	if (hit_list == NULL) return NULL;
+
+	if (num >= hit_list->num_records) return NULL;
+
+	return hit_list->record[num].data;
+}
+
+/* Clear the hits list (set it to start a position 0 again) */
+int kudu_hits_list_clear(void)
+{
+	if (hit_list == NULL) return FALSE;
+
+	int a;
+
+	hit_list->cpos = 0;
+
+	return TRUE;
+}
 
 
 KuduSelection *kudu_selection_new(KuduSelection *previous_item)
@@ -991,7 +1073,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 			a = *ptr++;
 			if ((selection_mode != SELECT_OBJECTS) && (selection_mode != SELECT_BONES) && (selection_mode != SELECT_JOINTS)) {
 				if (j == 0) {
-					select_shape = (KuduShape*)a;
+					select_shape = (KuduShape*)kudu_hits_list_get_item(a);
 					if (selection_mode != SELECT_SHAPES) continue;
 				}
 				if (select_shape == NULL) continue;
@@ -999,7 +1081,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 
 			switch (selection_mode) {
 				case SELECT_POINTS:
-					select_vertex = (KuduVertex*)a;
+					select_vertex = (KuduVertex*)kudu_hits_list_get_item(a);
 					ss = select_vertex->selected;
 					if (selection_type == K_SELECT_RECTANGLE) {
 						if (modifiers & GDK_CONTROL_MASK) select_vertex->selected = FALSE;
@@ -1014,7 +1096,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 					else	kudu_selection_list_remove_item(selection_list, select_vertex);
 					break;
 				case SELECT_EDGES:
-					select_edge = (KuduEdge*)a;
+					select_edge = (KuduEdge*)kudu_hits_list_get_item(a);
 					ss = select_edge->selected;
 					if (selection_type == K_SELECT_RECTANGLE) {
 						if (modifiers & GDK_CONTROL_MASK) select_edge->selected = FALSE;
@@ -1030,7 +1112,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 					else	kudu_selection_list_remove_item(selection_list, select_edge);
 					break;
 				case SELECT_FACES:
-					select_face = (KuduFace*)a;
+					select_face = (KuduFace*)kudu_hits_list_get_item(a);
 					ss = select_face->selected;
 					if (selection_type == K_SELECT_RECTANGLE) {
 						if (modifiers & GDK_CONTROL_MASK) select_face->selected = FALSE;
@@ -1061,7 +1143,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 					else	kudu_selection_list_remove_item(selection_list, select_shape);
 					break;
 				case SELECT_BONES:
-					selected_bone = (KuduBone*)a;
+					selected_bone = (KuduBone*)kudu_hits_list_get_item(a);
 
 					if (selection_type == K_SELECT_RECTANGLE)
 						kudu_selection_list_pick_bone(selected_bones_list, selected_bone, selection_type, modifiers);
@@ -1070,7 +1152,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 					}
 					break;
 				case SELECT_JOINTS:
-					selected_joint = (KuduJoint*)a;
+					selected_joint = (KuduJoint*)kudu_hits_list_get_item(a);
 
 					if (selection_type == K_SELECT_RECTANGLE)
 						kudu_selection_list_pick_joint(selected_bones_list, selected_joint, selection_type, modifiers);

@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -356,6 +356,34 @@ GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow *window, GtkAccelGroup *accel_
 		KM_ITEM("On Selection", KM_VIEW_FOCUS_SELECTION, "F");
 		kudu_menu_pop();
 
+		kudu_menu_push("Skeleton Detail");
+		KM_CHECK("Show Bones", KM_VIEW_BONES_SHOW, NULL);
+		KM_CHECK("Show Joints", KM_VIEW_BONES_SHOW_JOINTS, NULL);
+		kudu_menu_add_separator();
+		kudu_menu_new_radio_group();
+		KM_RADIO("Show All Bone Names", KM_VIEW_BONES_SHOW_NAMES, NULL);
+		KM_RADIO("Show Selected Bone Names", KM_VIEW_BONES_SHOW_SELECTED_NAMES, NULL);
+		KM_RADIO("Hide Bone Names", KM_VIEW_BONES_HIDE_NAMES, NULL);
+		kudu_menu_add_separator();
+		kudu_menu_new_radio_group();
+		KM_RADIO("Show All Bone Axes", KM_VIEW_BONES_SHOW_AXES, NULL);
+		KM_RADIO("Show Selected Bone Axes", KM_VIEW_BONES_SHOW_SELECTED_AXES, NULL);
+		KM_RADIO("Hide Bone Axes", KM_VIEW_BONES_HIDE_AXES, NULL);
+		kudu_menu_pop();
+
+		kudu_menu_push("Skin Detail");
+		KM_CHECK("Show Skin", KM_VIEW_SKIN_SHOW, NULL);
+		KM_CHECK("Smooth Shading", KM_VIEW_SKIN_SMOOTH, NULL);
+		KM_CHECK("Lighting", KM_VIEW_SKIN_LIT, NULL);
+		KM_CHECK("Real Colours", KM_VIEW_SKIN_REAL_COLOURS, NULL);
+		KM_CHECK("Textured", KM_VIEW_SKIN_TEXTURED, NULL);
+		kudu_menu_add_separator();
+		kudu_menu_new_radio_group();
+		KM_RADIO("Vertex Skin", KM_VIEW_SKIN_VERTEX, NULL);
+		KM_RADIO("Edge Skin", KM_VIEW_SKIN_EDGE, NULL);
+		KM_RADIO("Face Skin", KM_VIEW_SKIN_FACE, NULL);
+		kudu_menu_pop();
+
 	KM_CHECK("Orthographic View", KM_VIEW_ORTHOGRAPHIC, "F5");
 	kudu_menu_pop();
 
@@ -383,34 +411,6 @@ GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow *window, GtkAccelGroup *accel_
 		KM_RADIO("Skin Mode", KM_PROGRAM_SUB_MODE_2, "F2");
 		KM_RADIO("Attach Mode", KM_PROGRAM_SUB_MODE_3, "F3");
 		KM_RADIO("View Mode", KM_PROGRAM_SUB_MODE_4, "F4");
-		kudu_menu_pop();
-
-		kudu_menu_push("Skeleton Detail");
-		KM_CHECK("Show Bones", KM_PROGRAM_BONES_SHOW, NULL);
-		KM_CHECK("Show Joints", KM_PROGRAM_BONES_SHOW_JOINTS, NULL);
-		kudu_menu_add_separator();
-		kudu_menu_new_radio_group();
-		KM_RADIO("Show All Bone Names", KM_PROGRAM_BONES_SHOW_NAMES, NULL);
-		KM_RADIO("Show Selected Bone Names", KM_PROGRAM_BONES_SHOW_SELECTED_NAMES, NULL);
-		KM_RADIO("Hide Bone Names", KM_PROGRAM_BONES_HIDE_NAMES, NULL);
-		kudu_menu_add_separator();
-		kudu_menu_new_radio_group();
-		KM_RADIO("Show All Bone Axes", KM_PROGRAM_BONES_SHOW_AXES, NULL);
-		KM_RADIO("Show Selected Bone Axes", KM_PROGRAM_BONES_SHOW_SELECTED_AXES, NULL);
-		KM_RADIO("Hide Bone Axes", KM_PROGRAM_BONES_HIDE_AXES, NULL);
-		kudu_menu_pop();
-
-		kudu_menu_push("Skin Detail");
-		KM_CHECK("Show Skin", KM_PROGRAM_SKIN_SHOW, NULL);
-		KM_CHECK("Smooth Shading", KM_PROGRAM_SKIN_SMOOTH, NULL);
-		KM_CHECK("Lighting", KM_PROGRAM_SKIN_LIT, NULL);
-		KM_CHECK("Real Colours", KM_PROGRAM_SKIN_REAL_COLOURS, NULL);
-		KM_CHECK("Textured", KM_PROGRAM_SKIN_TEXTURED, NULL);
-		kudu_menu_add_separator();
-		kudu_menu_new_radio_group();
-		KM_RADIO("Vertex Skin", KM_PROGRAM_SKIN_VERTEX, NULL);
-		KM_RADIO("Edge Skin", KM_PROGRAM_SKIN_EDGE, NULL);
-		KM_RADIO("Face Skin", KM_PROGRAM_SKIN_FACE, NULL);
 		kudu_menu_pop();
 	kudu_menu_pop();
 

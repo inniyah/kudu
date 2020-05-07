@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -29,6 +29,26 @@
 
 #define SL_KEEP_CURRENT 1
 #define SL_SELECT_NEW 2
+
+#define HL_DEFAULT_NUM 2048;
+#define HL_DEFAULT_INC 128;
+
+typedef struct {
+	void *data;
+} KuduHit;
+
+typedef struct {
+	unsigned int cpos;
+	unsigned int num_records;
+	KuduHit *record;
+} KuduHitsList;
+
+int kudu_hits_list_init(void);
+unsigned int kudu_hits_list_push_item(void*);
+void *kudu_hits_list_get_item(unsigned int);
+int kudu_hits_list_clear(void);
+int kudu_hits_list_destroy(void);
+
 
 KuduSelection *kudu_selection_new(KuduSelection*);
 int kudu_selection_destroy(KuduSelection*);

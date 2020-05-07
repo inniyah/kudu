@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -362,8 +362,28 @@ int kudu_camera_push_mode(KuduCamera *camera, K_CameraMode mode)
 
 	if (camera->cmode > 3) return FALSE;
 
+	if (camera->mode_stack[camera->cmode] == mode) return TRUE;
+
 	camera->last_stack_operation = 1;
 	camera->cmode++;
+
+	camera->mode_stack[camera->cmode] = mode;
+
+	kudu_camera_set_mode(camera);
+
+	return TRUE;
+}
+
+int kudu_camera_load_mode(KuduCamera *camera, K_CameraMode mode)
+{
+	if (camera == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	if (camera->mode_stack[camera->cmode] == mode) return TRUE;
+
+	if (camera->cmode == 0) camera->cmode = 1;
 
 	camera->mode_stack[camera->cmode] = mode;
 
@@ -403,6 +423,15 @@ int kudu_camera_pop_all_modes(KuduCamera *camera)
 	kudu_camera_set_mode(camera);
 
 	return TRUE;
+}
+
+int kudu_camera_get_previous_mode(KuduCamera *camera)
+{
+	int pm = camera->cmode;
+
+	if (pm > 0) pm--;
+
+	return camera->mode_stack[pm];
 }
 
 int kudu_camera_mouse_action(KuduCamera *camera, float hscroll, float vscroll)
@@ -471,5 +500,124 @@ int kudu_camera_mouse_action(KuduCamera *camera, float hscroll, float vscroll)
 
 	return TRUE;
 }
+
+/* Determine which mode the camera should be in based on mouse / key states passed in "mouse" */
+/* Return values:
+	0 = no actions performed
+	1 = actions performed - do not continue processing mouse/keyboard inputs
+	2 = actions performed - do not continue processing mouse/keyboard inputs, and refresh dislpay */
+int kudu_camera_determine_mode(KuduCamera *camera, KuduMouse *mouse)
+{
+	int cam_tumble[6], cam_track[6], cam_dolly[6], cam_globals[2], nopop = FALSE, rv = 0, pm, cm, load = FALSE;
+
+	kudu_options_get_int(KO_CAMERA_GLOBALS, 2, cam_globals);
+	kudu_options_get_int(KO_CAMERA_TUMBLE, 6, cam_tumble);
+	kudu_options_get_int(KO_CAMERA_TRACK, 6, cam_track);
+	kudu_options_get_int(KO_CAMERA_DOLLY, 6, cam_dolly);
+
+	pm = kudu_camera_get_previous_mode(camera);
+	cm = camera->mode;
+
+	/* If the current mode's activation is "momentary" then set the load boolean to TRUE,
+	   this will tell us to "load" any new modes rather than "pushing" them */
+	if (((cm == CAMERA_MODE_TUMBLE) && (cam_tumble[3])) ||
+	    ((cm == CAMERA_MODE_TRACK) && (cam_track[3])) ||
+	    ((cm == CAMERA_MODE_DOLLY) && (cam_dolly[3]))) load = TRUE;
+
+	if ((((mouse->button == cam_tumble[0]) && (mouse->state == BUTTON_DOWN)) ||
+	    ((cam_tumble[0] == MOUSE_USE_KEY) && (mouse->key == cam_tumble[5]))) &&
+	     (mouse->modifiers == cam_tumble[1])) {	/* Key/mouse combo matches requirments for entering "tumble" mode.. */
+		if (camera->mode != CAMERA_MODE_TUMBLE) {	/* If we are already in tumble mode then skip */
+			if ((cam_tumble[2] == CAMERA_MODE_ANY) || (cam_tumble[2] == camera->mode)) {	/* Are dependencies satisfied? */
+				/* If the previous mode was tumble then just pop the stack to return */
+				if (pm == CAMERA_MODE_TUMBLE) kudu_camera_pop_mode(camera);
+				else if (load) kudu_camera_load_mode(camera, CAMERA_MODE_TUMBLE); /* Must mode be "pushed" or "loaded" ? */
+				else	kudu_camera_push_mode(camera, CAMERA_MODE_TUMBLE);
+				nopop = TRUE;
+				mouse->drop_release = 0;
+			}
+		} else if ((!cam_tumble[3]) && (cam_tumble[0] == MOUSE_USE_KEY)) {
+			/* If mode is "toggle" and we are using a key instead of a mouse button then pop the camera mode */
+			kudu_camera_pop_mode(camera);
+			nopop = TRUE;
+		}
+	}
+
+	/* This code segment basically the same as for tumble mode aboce ^^ */
+	if ((((mouse->button == cam_track[0]) && (mouse->state == BUTTON_DOWN)) ||
+	    ((cam_track[0] == MOUSE_USE_KEY) && (mouse->key == cam_track[5]))) &&
+	     (mouse->modifiers == cam_track[1])) {
+		if (camera->mode != CAMERA_MODE_TRACK) {
+			if ((cam_track[2] == CAMERA_MODE_ANY) || (cam_track[2] == camera->mode)) {
+				if (pm == CAMERA_MODE_TRACK) kudu_camera_pop_mode(camera);
+				else if (load) kudu_camera_load_mode(camera, CAMERA_MODE_TRACK);
+				else	kudu_camera_push_mode(camera, CAMERA_MODE_TRACK);
+				nopop = TRUE;
+				mouse->drop_release = 0;
+			}
+		} else if ((!cam_track[3]) && (cam_track[0] == MOUSE_USE_KEY)) {
+			kudu_camera_pop_mode(camera);
+			nopop = TRUE;
+		}
+	}
+
+	/* This code segment basically the same as for tumble mode aboce ^^ */
+	if ((((mouse->button == cam_dolly[0]) && (mouse->state == BUTTON_DOWN)) ||
+	    ((cam_dolly[0] == MOUSE_USE_KEY) && (mouse->key == cam_dolly[5]))) &&
+	     (mouse->modifiers == cam_dolly[1])) {
+		if (camera->mode != CAMERA_MODE_DOLLY) {
+			if ((cam_dolly[2] == CAMERA_MODE_ANY) || (cam_dolly[2] == camera->mode)) {
+				if (pm == CAMERA_MODE_DOLLY) kudu_camera_pop_mode(camera);
+				else if (load) kudu_camera_load_mode(camera, CAMERA_MODE_DOLLY);
+				else	kudu_camera_push_mode(camera, CAMERA_MODE_DOLLY);
+				nopop = TRUE;
+				mouse->drop_release = 0;
+			}
+		} else if ((!cam_dolly[3]) && (cam_dolly[0] == MOUSE_USE_KEY)) {
+			kudu_camera_pop_mode(camera);
+			nopop = TRUE;
+		}
+	}
+
+	if (nopop) rv = 1;
+
+	if (((camera->mode == CAMERA_MODE_TUMBLE) && (!cam_tumble[3])) ||
+	    ((camera->mode == CAMERA_MODE_DOLLY) && (!cam_dolly[3])) ||
+	    ((camera->mode == CAMERA_MODE_TRACK) && (!cam_track[3]))) {
+		if (mouse->button == cam_globals[0]) {
+			kudu_camera_pop_all_modes(camera);
+			mouse->drop_release = 1;
+			rv = 1;
+			nopop = TRUE;
+		} else if (mouse->button == cam_globals[1]) {
+			kudu_camera_push_mode(camera, CAMERA_MODE_RESET);
+			rv = 2;
+			nopop = TRUE;
+		}
+
+	}
+
+
+	if (!nopop) {
+		if (((camera->mode == CAMERA_MODE_TUMBLE) && (cam_tumble[3])) ||
+		    ((camera->mode == CAMERA_MODE_DOLLY) && (cam_dolly[3])) ||
+		    ((camera->mode == CAMERA_MODE_TRACK) && (cam_track[3]))) {
+			kudu_camera_pop_mode(camera);
+			rv = 1;
+			if ((camera->mode == CAMERA_MODE_FIXED) && (mouse->state == BUTTON_DOWN)) {
+				mouse->drop_release = 1;
+			}
+		}
+	}
+
+	return rv;
+}
+
+
+
+
+
+
+
 
 

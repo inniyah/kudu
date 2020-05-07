@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -250,7 +250,7 @@ int kudu_draw_joint(KuduJoint *joint, int options, float *colour_joint_default, 
 
 	if (options & K_RENDER_SELECT) {
 		mode = GL_QUADS;
-		glLoadName((unsigned int)joint);
+		glLoadName(kudu_hits_list_push_item(joint));
 	}
 	else mode = GL_LINE_LOOP;
 
@@ -529,7 +529,7 @@ int kudu_draw_bone(KuduBone *bone, int options)
 			}
 
 			pbone = current_bone->parent;
-			if (options & K_RENDER_SELECT) glLoadName((unsigned int)current_bone);
+			if (options & K_RENDER_SELECT) glLoadName(kudu_hits_list_push_item(current_bone));
 
 			s_joint = current_bone->s_joint;
 			e_joint = current_bone->e_joint;
@@ -650,7 +650,7 @@ int kudu_draw_point(KuduVertex *vertex, int options)	/* Draws a point vertex */
 		glColor3fv(colour_default);
 	}
 
-	if (options & K_RENDER_SELECT) glPushName((unsigned int)vertex);
+	if (options & K_RENDER_SELECT) glPushName(kudu_hits_list_push_item(vertex));
 
 	if (!optimise) glBegin(GL_POINTS);
 	glVertex3fv(vertex->av);
@@ -689,7 +689,7 @@ int kudu_draw_edge(KuduEdge *edge, int options)	/* Draws an edge */
 		glColor3fv(colour_default);
 	}
 
-	if (options & K_RENDER_SELECT) glPushName((unsigned int)edge);
+	if (options & K_RENDER_SELECT) glPushName(kudu_hits_list_push_item(edge));
 
 	if (!optimise) glBegin(GL_LINES);
 	glVertex3fv(s_vertex->av);
@@ -756,7 +756,7 @@ int kudu_draw_face(KuduFace *face, int options)
 		glEnable(GL_TEXTURE_2D);
 	} else textures = FALSE;
 
-	if (options & K_RENDER_SELECT) glPushName((unsigned int)face);
+	if (options & K_RENDER_SELECT) glPushName(kudu_hits_list_push_item(face));
 	glBegin(GL_POLYGON);
 	if ((lights_on) && (flat_shading)) glNormal3fv(face->fn);
 	if (kudu_face_for_each_edge_do(face)) {
@@ -796,7 +796,7 @@ int kudu_draw_face(KuduFace *face, int options)
 int kudu_draw_shape(KuduShape *shape, int options)
 {
 	if (shape == NULL) return FALSE;
-	if ((options & K_RENDER_SELECT) || (options & K_RENDER_SELECT_SHAPES)) glPushName((unsigned int)shape);
+	if ((options & K_RENDER_SELECT) || (options & K_RENDER_SELECT_SHAPES)) glPushName(kudu_hits_list_push_item(shape));
 
 	KuduFace *current_face = NULL;
 	KuduEdge *current_edge = NULL;

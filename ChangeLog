@@ -3,7 +3,15 @@ I will enter here whenever I have updated/changed/fixed or written something new
 I will top post (i.e. the most recent entry will be at the top - just under this)
 Date format is Day-Month-Year
 
+22-11-2006:
+	* Updated copyright dates in files... guess I should've done this a while ago.
 
+23-10-2006
+	* Corrected possible bug in selection "hits" system. (Was storing pointers as unsigned ints)
+	* Fixed (I think) a bug in wavefront (.obj) importer.
+
+05-10-2006:
+	* Reworked the navigation system... all profiles should now be correct (hopefully)
 
 13-09-2006:
 	* Launching new release, version 0.1.2.

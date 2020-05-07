@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -50,8 +50,11 @@ int kudu_camera_set_gl_matrix(KuduCamera*, int, int);
 int kudu_camera_set_gl_pick_matrix(KuduCamera*, int, int, int, int);
 int kudu_camera_set_mode(KuduCamera*);
 int kudu_camera_push_mode(KuduCamera*, K_CameraMode);
+int kudu_camera_load_mode(KuduCamera*, K_CameraMode);
 int kudu_camera_pop_mode(KuduCamera*);
 int kudu_camera_pop_all_modes(KuduCamera*);
+int kudu_camera_get_previous_mode(KuduCamera*);
 int kudu_camera_mouse_action(KuduCamera*, float, float);
+int kudu_camera_determine_mode(KuduCamera*, KuduMouse*);
 
 #endif /* CAMERA_H_INCLUDED */

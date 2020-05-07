@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -331,6 +331,14 @@ typedef enum {
 	CAMERA_MODE_RESET,
 } K_CameraMode;
 
+typedef enum {
+	KUDU_MODE_SKELETON,
+	KUDU_MODE_MESH,
+	KUDU_MODE_BIND,
+	KUDU_MODE_ANIMATE,
+	KUDU_MODE_PLAYBACK,
+} K_ProgramMode;
+
 /* Structure Declarations */
 
 typedef struct _KuduScript {
@@ -366,12 +374,18 @@ typedef struct {
 } KuduCamera;
 
 typedef struct {
-	GLint sx;
-	GLint sy;
-	GLint ex;
-	GLint ey;
-	GLbyte dragging;
-} K_MOUSE;
+	int sx;
+	int sy;
+	int ex;
+	int ey;
+	unsigned char dragging;
+	unsigned int button;
+	unsigned int state;
+	unsigned char drop_release;
+	unsigned char drop_push;
+	unsigned int modifiers;
+	unsigned int key;
+} KuduMouse;
 
 
 typedef struct _KuduMaterial {
@@ -638,8 +652,9 @@ typedef struct {
 	int skin_list;
 	int back_skin_list;
 	char request_refresh;
+	K_ProgramMode pmode;
 	K_SELECTION_HITS hit;
-	K_MOUSE mouse;
+	KuduMouse mouse;
 	KuduObject *selected_object;
 } K_PROGRAM;
 

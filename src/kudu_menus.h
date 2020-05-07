@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -139,6 +139,24 @@ typedef enum {
 	KM_VIEW_FOCUS_SELECTION,
 	KM_VIEW_ORTHOGRAPHIC,
 
+	KM_VIEW_BONES_SHOW,
+	KM_VIEW_BONES_SHOW_JOINTS,
+	KM_VIEW_BONES_SHOW_NAMES,
+	KM_VIEW_BONES_SHOW_SELECTED_NAMES,
+	KM_VIEW_BONES_HIDE_NAMES,
+	KM_VIEW_BONES_SHOW_AXES,
+	KM_VIEW_BONES_SHOW_SELECTED_AXES,
+	KM_VIEW_BONES_HIDE_AXES,
+	KM_VIEW_SKIN_SHOW,
+	KM_VIEW_SKIN_SMOOTH,
+	KM_VIEW_SKIN_LIT,
+	KM_VIEW_SKIN_REAL_COLOURS,
+	KM_VIEW_SKIN_TEXTURED,
+	KM_VIEW_SKIN_VERTEX,
+	KM_VIEW_SKIN_EDGE,
+	KM_VIEW_SKIN_FACE,
+
+
 	/* Playback menu */
 	KM_PLAYBACK,
 	KM_PLAYBACK_PLAY,
@@ -154,22 +172,7 @@ typedef enum {
 	KM_PROGRAM_SUB_MODE_2,
 	KM_PROGRAM_SUB_MODE_3,
 	KM_PROGRAM_SUB_MODE_4,
-	KM_PROGRAM_BONES_SHOW,
-	KM_PROGRAM_BONES_SHOW_JOINTS,
-	KM_PROGRAM_BONES_SHOW_NAMES,
-	KM_PROGRAM_BONES_SHOW_SELECTED_NAMES,
-	KM_PROGRAM_BONES_HIDE_NAMES,
-	KM_PROGRAM_BONES_SHOW_AXES,
-	KM_PROGRAM_BONES_SHOW_SELECTED_AXES,
-	KM_PROGRAM_BONES_HIDE_AXES,
-	KM_PROGRAM_SKIN_SHOW,
-	KM_PROGRAM_SKIN_SMOOTH,
-	KM_PROGRAM_SKIN_LIT,
-	KM_PROGRAM_SKIN_REAL_COLOURS,
-	KM_PROGRAM_SKIN_TEXTURED,
-	KM_PROGRAM_SKIN_VERTEX,
-	KM_PROGRAM_SKIN_EDGE,
-	KM_PROGRAM_SKIN_FACE,
+
 
 	/* Help menu */
 	KM_HELP_ABOUT,

@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -677,7 +677,7 @@ int kudu_options_save_to_file(char *filename)
 	FILE *file;
 	int a, oc, num, *ip;
 	float *fp;
-	char *cp;
+	char *cp, buf[32];
 
 	file = fopen(filename, "w");
 	if (file == NULL) return FALSE;
@@ -716,7 +716,8 @@ int kudu_options_save_to_file(char *filename)
 				num = (opt->opt_size / sizeof(float));
 				fprintf(file, "floats = ");
 				for (a = 0; a < num; a++) {
-					fprintf(file, "%f", fp[a]);
+					g_ascii_dtostr(buf, 32, (gdouble)fp[a]);
+					fprintf(file, "%s", buf);
 					if (a < (num-1)) fprintf(file, ", ");
 				}
 				fprintf(file, "\n");
@@ -821,7 +822,7 @@ int kudu_options_load_from_file(char *filename)
 			if (st == NULL) continue;
 			num = 0;
 			do {
-				f = strtod(st, NULL);
+				f = (float)g_ascii_strtod(st, NULL);
 				kudu_options_set_float_no(name, num, f);
 				st = strtok(NULL, ",");
 				num++;

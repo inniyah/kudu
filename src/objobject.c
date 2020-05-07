@@ -1,7 +1,7 @@
 /******************************************************************************/
 /*                                                                            */
 /* Kudu Animator                                                              */
-/* Copyright (C) 2005 Daniel Pekelharing                                      */
+/* Copyright (C) 2005-2006 Daniel Pekelharing                                 */
 /* <redarrow@users.sourceforge.net>                                           */
 /*                                                                            */
 /* This program is free software; you can redistribute it and/or modify       */
@@ -321,8 +321,10 @@ int kudu_object_import_obj_from_file(KuduObject *object, char *filename)
 
 				if (lf) {
 				/*if (current_edge->left_face == NULL) {*/
-					kudu_edge_faces_set(current_edge, current_face, NULL);
-					kudu_edge_wings_set(current_edge, edge2, edge1, NULL, NULL);
+					/*kudu_edge_faces_set(current_edge, current_face, NULL);
+					kudu_edge_wings_set(current_edge, edge2, edge1, NULL, NULL);*/
+					kudu_edge_faces_set(current_edge, NULL, current_face);
+					kudu_edge_wings_set(current_edge, NULL, NULL, edge2, edge1);
 					if (current_material != NULL) {
 						if (current_material->texture != NULL) {
 							if (tex_uv != NULL) {
@@ -335,8 +337,10 @@ int kudu_object_import_obj_from_file(KuduObject *object, char *filename)
 					}
 				/*} else if (current_edge->right_face == NULL) {*/
 				} else {
-					kudu_edge_faces_set(current_edge, NULL, current_face);
-					kudu_edge_wings_set(current_edge, NULL, NULL, edge2, edge1);
+					/*kudu_edge_faces_set(current_edge, NULL, current_face);
+					kudu_edge_wings_set(current_edge, NULL, NULL, edge2, edge1);*/
+					kudu_edge_faces_set(current_edge, current_face, NULL);
+					kudu_edge_wings_set(current_edge, edge2, edge1, NULL, NULL);
 					if (current_material != NULL) {
 						if (current_material->texture != NULL) {
 							if (tex_uv != NULL) {
