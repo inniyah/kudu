@@ -88,10 +88,32 @@ void kudu_font_builtin_init(void)
 void kudu_font_builtin_write_2d(GLint X, GLint Y, char *TEXT)
 {
 	glPushAttrib(GL_LIST_BIT);
+
+	/* Older versions of OpenGL (pre 1.4) don't have the glWindowPos2i function...
+	   use a workaround in this case */
+	#ifdef HAVE_GLWINDOWPOS
 	glWindowPos2i(X, Y);
+	#else
+	glPushMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	gluOrtho2D(0.0, (GLfloat)program.windowWidth, 0.0, (GLfloat)program.windowHeight);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glRasterPos2i(X, Y);
+	#endif
+
 	glListBase(FONT_OFFSET);
 	glCallLists(strlen(TEXT), GL_UNSIGNED_BYTE, (GLubyte *) TEXT);
 	glPopAttrib();
+
+	#ifndef HAVE_GLWINDOWPOS
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+	#endif
 }
 
 void kudu_font_builtin_write_3d(GLfloat X, GLfloat Y, GLfloat Z, char *TEXT)

@@ -30,6 +30,7 @@ typedef enum {
 
 	KT_SELECT_OBJECTS,
 	KT_SELECT_BONES,
+	KT_SELECT_JOINTS,
 	KT_SELECT_VERTICES,
 	KT_SELECT_EDGES,
 	KT_SELECT_FACES,
@@ -40,10 +41,12 @@ typedef enum {
 
 typedef struct _KuduToolbarItem {
 	GtkToolItem *tool_item;
+	gulong signal;
 } KuduToolbarItem;
 
 
 
+gulong kudu_toolbar_last_signal_id(void);
 int kudu_toolbar_set_path(char *);
 int kudu_toolbar_start_new(char*, GtkAccelGroup*, GCallback);
 GtkWidget *kudu_toolbar_end(void);
@@ -58,6 +61,9 @@ int kudu_toolbar_store_item(K_MainToolbar, GtkToolItem*);
 GtkToolItem *kudu_toolbar_get_item(K_MainToolbar);
 int kudu_toolbar_item_disable(K_MainToolbar);
 int kudu_toolbar_item_enable(K_MainToolbar);
+int kudu_toolbar_item_activate(K_MainToolbar);
+int kudu_toolbar_item_activate_no_call(K_MainToolbar);
+int kudu_toolbar_toggle_item_set_active_no_call(K_MainToolbar, int);
 
 GtkWidget *kudu_main_toolbar_build(GtkAccelGroup*, GCallback);
 

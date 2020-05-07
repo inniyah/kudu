@@ -27,6 +27,6 @@
 #include "vertices.h"
 #include "selection.h"
 
-gint kudu_gui_vertex_properties_edit(KuduObject*, KuduSelectionList*);
+int kudu_gui_vertex_properties_edit(KuduObject*, KuduSelectionList*, KuduSelectionList*);
 
 #endif	/* GUI_VERTEX_H_INCLUDED */

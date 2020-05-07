@@ -19,18 +19,14 @@
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  */
 /*                                                                            */
 /******************************************************************************/
-#ifndef ABOUT_H_INCLUDED
-#define ABOUT_H_INCLUDED
+#ifndef UIPLUGIN_H_INCLUDED
+#define UIPLUGIN_H_INCLUDED
 
 #include "globals.h"
 
+int kudu_uip_mouse_motion(int, int, int, float, float, float, float);
+int kudu_uip_mouse_button(int, int, int, int);
+int kudu_uip_keypress(int, int);
 
-int kudu_about_printout(void);
-GtkWidget *kudu_about_splash_window(void);
-void kudu_about_splash_display(void);
-void kudu_about_splash_set_parent(GtkWindow*);
-gboolean kudu_about_splash_close(void);
-void kudu_about_splash_message(char*);
-
-#endif /* ABOUT_H_INCLUDED */
+#endif /* UIPLUGIN_H_INCLUDED */
 

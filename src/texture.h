@@ -24,4 +24,9 @@
 
 #include "globals.h"
 
+KuduTexture *kudu_texture_new(KuduObject*, KuduTexture*);
+int kudu_texture_destroy(KuduTexture*);
+int kudu_texture_assign_image(KuduTexture*, KuduImage*);
+KuduTexture *kudu_texture_new_autoload_image(KuduObject*, KuduTexture*, char*);
+
 #endif /* TEXTURE_H_INCLUDED */

@@ -31,7 +31,7 @@ typedef enum {
 	DELETE,
 } BE_Function;
 
-int kudu_bones_edit_selection(KuduSelectionList*, float, float, int);
+int kudu_bones_edit_selection(KuduSelectionList*, float, float, float, float, int);
 int kudu_bones_edit_anchor(KuduSelectionList*, int);
 int kudu_bones_edit_unanchor(KuduSelectionList*, int);
 int kudu_bones_edit_function(KuduSelectionList*, BE_Function, int, KuduObject*);

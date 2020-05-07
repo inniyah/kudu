@@ -26,6 +26,7 @@ static KuduMaterial **selected_material;
 static KuduMaterial **root_material;
 static KuduMaterial *picked_material = NULL;
 static gulong name_change;
+static unsigned int tex = -1;
 
 enum {
 	MATERIAL_NAME,
@@ -97,12 +98,37 @@ int kudu_gui_materials_edit_display(GtkWidget *widget, GdkEventExpose *event, gp
 	KuduMaterial *material;
 	material = *selected_material;
 	if (material == NULL) return FALSE;
+	KuduTexture *texture = material->texture;
+	KuduImage *image = NULL;
+
+	if (texture != NULL) image = texture->image;
 
 	GdkGLContext *glContext = gtk_widget_get_gl_context(widget);
 	GdkGLDrawable *glDrawable = gtk_widget_get_gl_drawable(widget);
 
 	if (!gdk_gl_drawable_gl_begin(glDrawable, glContext)) return FALSE;
 
+	if (image != NULL) {
+		glEnable(GL_TEXTURE);
+		glEnable(GL_TEXTURE_2D);
+
+		/* Note that we are rendering to a *new* OpenGL context... so textures can't be used directly.. */
+		/* Which is why we create a new one and just bind the correct image to it.. */
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, image->channels == 3 ? GL_RGB : GL_RGBA, image->width,
+				image->height, 0, image->channels == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, image->data);
+	} else {
+		glDisable(GL_TEXTURE);
+		glDisable(GL_TEXTURE_2D);
+	}
+
+	GLUquadric *sphere = gluNewQuadric();
+	gluQuadricTexture(sphere, GL_TRUE);
+	
 	glLoadIdentity();
 	gluLookAt(0.0, 0.0, -10.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
@@ -115,9 +141,12 @@ int kudu_gui_materials_edit_display(GtkWidget *widget, GdkEventExpose *event, gp
 	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, material->shininess);
 
 
-	gdk_gl_draw_sphere(TRUE, 4.0, 32, 32);
+/*	gdk_gl_draw_sphere(TRUE, 4.0, 32, 32);*/
+	gluSphere(sphere, 4.0, 32, 32);
 
 	glFlush();
+
+	gluDeleteQuadric(sphere);
 
 	gdk_gl_drawable_gl_end(glDrawable);
 	return TRUE;
@@ -655,6 +684,8 @@ int kudu_gui_materials_edit(KuduObject* object, KuduMaterial *init_material)
 
 	gtk_dialog_add_button(GTK_DIALOG(dialog), GTK_STOCK_OK, GTK_RESPONSE_OK);
 
+	glGenTextures(1, &tex);
+
 	gtk_widget_show(dialog);
 
 	if (sel) {
@@ -667,6 +698,8 @@ int kudu_gui_materials_edit(KuduObject* object, KuduMaterial *init_material)
 		case GTK_RESPONSE_OK:
 			break;
 	}
+
+	glDeleteTextures(1, &tex);
 
 	gtk_widget_destroy(dialog);
 

@@ -25,6 +25,7 @@
 #include "globals.h"
 #include "utils.h"
 #include "mathematics.h"
+#include "joints.h"
 
 #define NOKE_NULL -1
 #define NOKE_ROOT 0
@@ -47,9 +48,10 @@ int kudu_bone_next_id(KuduObject*);
 int kudu_bone_is_parent(KuduBone*);
 KuduBone *kudu_bone_new(KuduObject*);
 KuduBone *kudu_bone_new_with_id(KuduObject*, int);
-KuduBone *kudu_bone_add_child(KuduObject*, KuduBone*);
-KuduBone *kudu_bone_add_parent(KuduObject*, KuduBone*);
-KuduBone *kudu_bone_add_sibling(KuduObject*, KuduBone*);
+int kudu_bone_set_joints(KuduBone*, KuduJoint*, KuduJoint*);
+KuduBone *kudu_bone_add_child(KuduBone*);
+KuduBone *kudu_bone_add_parent(KuduBone*);
+KuduBone *kudu_bone_add_sibling(KuduBone*);
 int kudu_bone_insert_parent(KuduBone*, KuduBone*);
 int kudu_bone_adopt_child(KuduBone*, KuduBone*);
 int kudu_bone_adopt_sibling(KuduBone*, KuduBone*);
@@ -69,14 +71,11 @@ int kudu_bone_magic_update_all(KuduBone*);
 
 int kudu_bone_num_children(KuduBone*);
 
-int kudu_bone_has_angle_shifted(KuduBone*);
-int kudu_bone_has_position_shifted(KuduBone*);
-void kudu_bone_angle_has_shifted(KuduBone*);
-void kudu_bone_position_has_shifted(KuduBone*);
-int kudu_bone_joint_by_percent(KuduBone*, KuduBone*, GLubyte);
-void kudu_bone_calculate_matrix_root(KuduBone*);
-void kudu_bone_calculate_matrix(KuduBone*, KuduBone*);
-void kudu_bone_calculate_pos_start(KuduBone*, KuduBone*);
+int kudu_bone_both_joints_selected(KuduBone*);
 void kudu_bone_calculate_pos_end(KuduBone*);
+int kudu_bone_calculate_inverse(KuduBone*);
+int kudu_bone_joint_by_percent(KuduBone*, KuduBone*, unsigned char);
+void kudu_bone_calculate_matrix(KuduBone*, int);
+int kudu_bone_apply_rotation(KuduBone*, float, int, int);
 
 #endif /* BONES_H_INCLUDED */

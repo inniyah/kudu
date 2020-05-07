@@ -187,6 +187,7 @@ int kudu_selection_list_set_type(KuduSelectionList *selection_list, K_SELECTION_
 	KuduFace *face;
 	KuduShape *shape;
 	KuduBone *bone;
+	KuduJoint *joint;
 
 	/* "Disconnect" all items from the selection list */
 	selection_list->selected_items = 0;
@@ -247,6 +248,25 @@ int kudu_selection_list_set_type(KuduSelectionList *selection_list, K_SELECTION_
 				bone = (KuduBone*)current_item->item;
 				if (bone == NULL) break;
 				if (change) bone->selected = FALSE;
+				if (type == SELECT_JOINTS) {
+					joint = bone->s_joint;	/* Select start joint */
+					if (!joint->selected) kudu_selection_list_add_item(selection_list, joint);
+					joint->selected = TRUE;
+
+					joint = bone->e_joint;	/* Select end joint */
+					if (!joint->selected) kudu_selection_list_add_item(selection_list, joint);
+					joint->selected = TRUE;
+				}
+				break;
+			case SELECT_JOINTS:
+				joint = (KuduJoint*)current_item->item;
+				if (joint == NULL) break;
+				if (change) joint->selected = FALSE;
+				if (type == SELECT_BONES) {
+					bone = joint->bone;
+					if (!bone->selected) kudu_selection_list_add_item(selection_list, bone);
+					bone->selected = TRUE;
+				}			
 				break;
 			case SELECT_OBJECTS:
 				break;
@@ -365,6 +385,20 @@ void *kudu_selection_list_next_do(void)
 	return return_selection->item;
 }
 
+void *kudu_selection_list_get_first_item(KuduSelectionList* selection_list)
+{
+	if (selection_list == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return NULL;
+	}
+
+	KuduSelection *selection = selection_list->first_item;
+
+	if (selection != NULL) return selection->item;
+
+	return NULL;
+}
+
 int kudu_selection_list_anything_selected(KuduSelectionList* selection_list)
 {
 	if (selection_list == NULL) return FALSE;
@@ -384,6 +418,7 @@ int kudu_selection_list_get_center_point(KuduSelectionList* selection_list, floa
 	KuduFace *face;
 	KuduShape *shape;
 	KuduBone *bone;
+	KuduJoint *s_joint, *e_joint;
 	KuduSelection *selection = NULL;
 	float minx = 1000000, maxx = -1000000, miny = 1000000, maxy = -1000000, minz = 1000000, maxz = -1000000;
 
@@ -449,19 +484,32 @@ int kudu_selection_list_get_center_point(KuduSelectionList* selection_list, floa
 			case SELECT_BONES:
 				bone = (KuduBone*)selection->item;
 				if (bone == NULL) break;
-				if (bone->posX < minx) minx = bone->posX;
-				if (bone->posX > maxx) maxx = bone->posX;
-				if (bone->posY < miny) miny = bone->posY;
-				if (bone->posY > maxy) maxy = bone->posY;
-				if (bone->posZ < minz) minz = bone->posZ;
-				if (bone->posZ > maxz) maxz = bone->posZ;
+				s_joint = bone->s_joint;
+				e_joint = bone->e_joint;
 
-				if (bone->lineX < minx) minx = bone->lineX;
-				if (bone->lineX > maxx) maxx = bone->lineX;
-				if (bone->lineY < miny) miny = bone->lineY;
-				if (bone->lineY > maxy) maxy = bone->lineY;
-				if (bone->lineZ < minz) minz = bone->lineZ;
-				if (bone->lineZ > maxz) maxz = bone->lineZ;
+				if (s_joint->pos[0] < minx) minx = s_joint->pos[0];
+				if (s_joint->pos[0] > maxx) maxx = s_joint->pos[0];
+				if (s_joint->pos[1] < miny) miny = s_joint->pos[1];
+				if (s_joint->pos[1] > maxy) maxy = s_joint->pos[1];
+				if (s_joint->pos[2] < minz) minz = s_joint->pos[2];
+				if (s_joint->pos[2] > maxz) maxz = s_joint->pos[2];
+
+				if (e_joint->pos[0] < minx) minx = e_joint->pos[0];
+				if (e_joint->pos[0] > maxx) maxx = e_joint->pos[0];
+				if (e_joint->pos[1] < miny) miny = e_joint->pos[1];
+				if (e_joint->pos[1] > maxy) maxy = e_joint->pos[1];
+				if (e_joint->pos[2] < minz) minz = e_joint->pos[2];
+				if (e_joint->pos[2] > maxz) maxz = e_joint->pos[2];
+				break;
+			case SELECT_JOINTS:
+				s_joint = (KuduJoint*)selection->item;
+				if (s_joint == NULL) break;
+				if (s_joint->pos[0] < minx) minx = s_joint->pos[0];
+				if (s_joint->pos[0] > maxx) maxx = s_joint->pos[0];
+				if (s_joint->pos[1] < miny) miny = s_joint->pos[1];
+				if (s_joint->pos[1] > maxy) maxy = s_joint->pos[1];
+				if (s_joint->pos[2] < minz) minz = s_joint->pos[2];
+				if (s_joint->pos[2] > maxz) maxz = s_joint->pos[2];
 				break;
 		}
 
@@ -618,6 +666,42 @@ int kudu_selection_list_select_bones(KuduSelectionList *selection_list, KuduBone
 
 }
 
+int kudu_selection_list_select_joints(KuduSelectionList *selection_list, KuduJoint *joint, K_SELECTION_TYPE what)
+{
+	if ((selection_list == NULL) || (joint == NULL)) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	KuduJoint *current_joint = NULL;
+
+	do {
+		if (current_joint == NULL) current_joint = joint;
+		else current_joint = current_joint->next_joint;
+
+		switch (what) {
+			case SELECT_NOTHING:
+				if (!current_joint->selected) break;
+				kudu_selection_list_remove_item(selection_list, current_joint);
+				current_joint->selected = FALSE;
+				break;
+			case SELECT_ALL:
+				if (current_joint->selected) break;
+				kudu_selection_list_add_item(selection_list, current_joint);
+				current_joint->selected = TRUE;
+				break;
+			case SELECT_INVERSE:
+				if (current_joint->selected) kudu_selection_list_remove_item(selection_list, current_joint);
+				else	kudu_selection_list_add_item(selection_list, current_joint);
+				current_joint->selected = !current_joint->selected;
+				break;
+		}
+
+	} while (current_joint->next_joint != NULL);
+
+	return TRUE;
+}
+
 int kudu_selection_list_pick_bone(KuduSelectionList *selection_list, KuduBone *pick_bone, int selection_type, unsigned int modifiers)
 {
 	if (selection_list == NULL) return FALSE;
@@ -628,8 +712,8 @@ int kudu_selection_list_pick_bone(KuduSelectionList *selection_list, KuduBone *p
 	bs = pick_bone->selected;
 
 	if (selection_type == K_SELECT_RECTANGLE) {
-		if (modifiers & GDK_CONTROL_MASK)
-			pick_bone->selected = FALSE;
+		if (modifiers & GDK_CONTROL_MASK) pick_bone->selected = FALSE;
+		else if (modifiers & GDK_SHIFT_MASK) pick_bone->selected = !pick_bone->selected;
 		else	pick_bone->selected = TRUE;
 	} else	if (selection_type == K_SELECT_PICK) {
 		pick_bone->selected = !pick_bone->selected;
@@ -638,6 +722,29 @@ int kudu_selection_list_pick_bone(KuduSelectionList *selection_list, KuduBone *p
 	if (bs != pick_bone->selected) {
 		if (pick_bone->selected) kudu_selection_list_add_item(selection_list, pick_bone);
 		else	kudu_selection_list_remove_item(selection_list, pick_bone);
+	}
+
+	return TRUE;
+}
+
+int kudu_selection_list_pick_joint(KuduSelectionList *selection_list, KuduJoint *pick_joint, int selection_type, unsigned int modifiers)
+{
+	if (selection_list == NULL) return FALSE;
+	if (pick_joint == NULL) return FALSE;
+
+	int bs = pick_joint->selected;
+
+	if (selection_type == K_SELECT_RECTANGLE) {
+		if (modifiers & GDK_CONTROL_MASK) pick_joint->selected = FALSE;
+		else if (modifiers & GDK_SHIFT_MASK) pick_joint->selected = !pick_joint->selected;
+		else	pick_joint->selected = TRUE;
+	} else if (selection_type == K_SELECT_PICK) {
+		pick_joint->selected = !pick_joint->selected;
+	}
+
+	if (bs != pick_joint->selected) {
+		if (pick_joint->selected) kudu_selection_list_add_item(selection_list, pick_joint);
+		else	kudu_selection_list_remove_item(selection_list, pick_joint);
 	}
 
 	return TRUE;
@@ -717,6 +824,14 @@ int kudu_selection_list_draw_info(KuduSelectionList *selection_list, int sx, int
 				sprintf(text, "1 selected Bone");
 			else
 				sprintf(text, "%d selected Bones", count);
+			break;
+		case SELECT_JOINTS:
+			if (count == 0)
+				sprintf(text, "No Joints selected");
+			else if (count == 1)
+				sprintf(text, "1 selected Joint");
+			else
+				sprintf(text, "%d selected Joints", count);
 			break;
 		case SELECT_OBJECTS:
 			if (count == 0)
@@ -846,6 +961,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 	int ss, closer;
 	KuduObject *selected_object = NULL;
 	KuduBone *selected_bone = NULL, *pbone = NULL;
+	KuduJoint *selected_joint = NULL, *pjoint = NULL;
 	KuduVertex *select_vertex = NULL, *pvertex = NULL;
 	KuduEdge *select_edge = NULL, *pedge = NULL;
 	KuduFace *select_face = NULL, *pface = NULL;
@@ -873,7 +989,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 
 		for (j = 0; j < (int)names; j++) {
 			a = *ptr++;
-			if ((selection_mode != SELECT_OBJECTS) && (selection_mode != SELECT_BONES)) {
+			if ((selection_mode != SELECT_OBJECTS) && (selection_mode != SELECT_BONES) && (selection_mode != SELECT_JOINTS)) {
 				if (j == 0) {
 					select_shape = (KuduShape*)a;
 					if (selection_mode != SELECT_SHAPES) continue;
@@ -887,6 +1003,7 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 					ss = select_vertex->selected;
 					if (selection_type == K_SELECT_RECTANGLE) {
 						if (modifiers & GDK_CONTROL_MASK) select_vertex->selected = FALSE;
+						else if (modifiers & GDK_SHIFT_MASK) select_vertex->selected = !select_vertex->selected;
 						else	select_vertex->selected = TRUE;
 					} else	if (selection_type == K_SELECT_PICK) {
 						if (closer) pvertex = select_vertex;
@@ -900,8 +1017,8 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 					select_edge = (KuduEdge*)a;
 					ss = select_edge->selected;
 					if (selection_type == K_SELECT_RECTANGLE) {
-						if (modifiers & GDK_CONTROL_MASK)
-							select_edge->selected = FALSE;
+						if (modifiers & GDK_CONTROL_MASK) select_edge->selected = FALSE;
+						else if (modifiers & GDK_SHIFT_MASK) select_edge->selected = !select_edge->selected;
 						else	select_edge->selected = TRUE;
 					} else	if (selection_type == K_SELECT_PICK) {
 						if (closer) pedge = select_edge;
@@ -916,8 +1033,8 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 					select_face = (KuduFace*)a;
 					ss = select_face->selected;
 					if (selection_type == K_SELECT_RECTANGLE) {
-						if (modifiers & GDK_CONTROL_MASK)
-							select_face->selected = FALSE;
+						if (modifiers & GDK_CONTROL_MASK) select_face->selected = FALSE;
+						else if (modifiers & GDK_SHIFT_MASK) select_face->selected = !select_face->selected;
 						else	select_face->selected = TRUE;
 					} else	if (selection_type == K_SELECT_PICK) {
 						if (closer) pface = select_face;
@@ -931,8 +1048,8 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 				case SELECT_SHAPES:
 					ss = select_shape->selected;
 					if (selection_type == K_SELECT_RECTANGLE) {
-						if (modifiers & GDK_CONTROL_MASK)
-							select_shape->selected = FALSE;
+						if (modifiers & GDK_CONTROL_MASK) select_shape->selected = FALSE;
+						else if (modifiers & GDK_SHIFT_MASK) select_shape->selected = !select_shape->selected;
 						else	select_shape->selected = TRUE;
 					} else	if (selection_type == K_SELECT_PICK) {
 						if (closer) pshape = select_shape;
@@ -950,6 +1067,15 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 						kudu_selection_list_pick_bone(selected_bones_list, selected_bone, selection_type, modifiers);
 					else if (selection_type == K_SELECT_PICK) {
 						if (closer) pbone = selected_bone;
+					}
+					break;
+				case SELECT_JOINTS:
+					selected_joint = (KuduJoint*)a;
+
+					if (selection_type == K_SELECT_RECTANGLE)
+						kudu_selection_list_pick_joint(selected_bones_list, selected_joint, selection_type, modifiers);
+					else if (selection_type == K_SELECT_PICK) {
+						if (closer) pjoint = selected_joint;
 					}
 					break;
 				case SELECT_OBJECTS:
@@ -1002,6 +1128,9 @@ int kudu_selection_hits_process(int selection_mode, int selection_type, unsigned
 			if (pbone == NULL) break;
 			kudu_selection_list_pick_bone(selected_bones_list, pbone, selection_type, modifiers);
 			break;
+		case SELECT_JOINTS:
+			if (pjoint == NULL) break;
+			kudu_selection_list_pick_joint(selected_bones_list, pjoint, selection_type, modifiers);
 		case SELECT_OBJECTS:
 			if (selected_object == NULL) break;
 			kudu_selection_pick_object(selected_object);

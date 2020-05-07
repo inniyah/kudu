@@ -32,6 +32,13 @@ static char *ap_root = NULL, *ap_sp[MAX_SUBMENU];
 static GtkWidget *menu_bar = NULL, *first_menu = NULL, *sub_menu[MAX_SUBMENU];
 static int current_menu = 0;
 static GSList *radio_group = NULL;
+static gulong last_signal_id = 0;
+
+/* Return the most recently created itemi's signal id */
+gulong kudu_menu_last_signal_id(void)
+{
+	return last_signal_id;
+}
 
 /* Start a new menu */
 int kudu_menu_start_new(GtkAccelGroup *group, GtkWidget *bar, char *root_path, GCallback callback)
@@ -184,7 +191,7 @@ GtkWidget *kudu_menu_add_item(char *label, int value, char *accelerator)
 
 	GtkWidget *item = gtk_menu_item_new_with_mnemonic(label);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-	g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(menu_callback), (gpointer)value);
+	last_signal_id = g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(menu_callback), GINT_TO_POINTER(value));
 
 	kudu_menu_set_accelerator(item, accelerator);
 
@@ -202,7 +209,7 @@ GtkWidget *kudu_menu_add_check(char *label, int value, char *accelerator)
 
 	GtkWidget *item = gtk_check_menu_item_new_with_mnemonic(label);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-	g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(menu_callback), (gpointer)value);
+	last_signal_id = g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(menu_callback), GINT_TO_POINTER(value));
 
 	kudu_menu_set_accelerator(item, accelerator);
 
@@ -227,7 +234,7 @@ GtkWidget *kudu_menu_add_radio(char *label, int value, char *accelerator)
 
 	GtkWidget *item = gtk_radio_menu_item_new_with_mnemonic(radio_group, label);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-	g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(menu_callback), (gpointer)value);
+	last_signal_id = g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(menu_callback), GINT_TO_POINTER(value));
 
 	kudu_menu_set_accelerator(item, accelerator);
 
@@ -307,7 +314,7 @@ GtkWidget *kudu_gui_menu_item_new(GtkWidget *menu_shell, char *label, int value,
 
 	menu_item = gtk_menu_item_new_with_mnemonic(label);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu_shell), menu_item);
-	g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(menu_callback), (gpointer)value);
+	g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(menu_callback), GINT_TO_POINTER(value));
 
 	char al[256];
 
@@ -327,7 +334,7 @@ GtkWidget *kudu_gui_check_menu_item_new(GtkWidget *menu_shell, char *label, int 
 
 	menu_item = gtk_check_menu_item_new_with_mnemonic(label);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu_shell), menu_item);
-	g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(menu_callback), (gpointer)value);
+	g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(menu_callback), GINT_TO_POINTER(value));
 /*	if (accel_key > 0)
 		gtk_widget_add_accelerator(menu_item, "activate", accel_group, accel_key, accel_mods, GTK_ACCEL_VISIBLE);*/
 
@@ -345,7 +352,7 @@ GtkWidget *kudu_gui_radio_menu_item_new(int group, GtkWidget *menu_shell, char *
 	if (group) menu_item = gtk_radio_menu_item_new_with_mnemonic(NULL, label);
 	else	menu_item = gtk_radio_menu_item_new_with_mnemonic(last_radio_item_group, label);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu_shell), menu_item);
-	g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(menu_callback), (gpointer)value);
+	g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(menu_callback), GINT_TO_POINTER(value));
 /*	if (accel_key > 0)
 		gtk_widget_add_accelerator(menu_item, "activate", accel_group, accel_key, accel_mods, GTK_ACCEL_VISIBLE);*/
 

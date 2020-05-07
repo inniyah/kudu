@@ -216,6 +216,89 @@ void kudu_draw_block(GLfloat X, GLfloat Y, GLfloat Z, GLfloat X2, GLfloat Y2, GL
 
 }
 
+int kudu_draw_joint(KuduJoint *joint, int options, float *colour_joint_default, float *colour_joint_selected)
+{
+	if (joint == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	KuduBone *bone;
+	unsigned int mode;
+
+	if (!(options & K_RENDER_SHOW_SELECTED)) {
+		glColor4fv(colour_joint_default);
+	} else {
+		if (joint->selected) glColor4fv(colour_joint_selected);
+		else glColor4fv(colour_joint_default);
+	}
+
+	if (options & K_RENDER_SELECT) {
+		mode = GL_QUADS;
+		glLoadName((unsigned int)joint);
+	}
+	else mode = GL_LINE_LOOP;
+
+	/* K_RENDER_JOINTS will only be set if called from kudu_draw_bone in which case
+	   we have already translated to the correct position - just a slight performace boost */
+	if (!(options & K_RENDER_JOINTS)) {
+		bone = joint->bone;
+		glPushMatrix();
+		glTranslatef(joint->pos[0], joint->pos[1], joint->pos[2]);	/* Translate to joint pos */
+		/*glMultMatrixf(bone->matrix);*/
+		/* If joint is the e_joint of bone (most likely) then we need to translate the length of bone */
+		/*if (joint == bone->e_joint) glTranslatef(0.0, 0.0, bone->length);*/
+	}
+
+	glBegin(mode);
+	glVertex3f(0.0, 0.0, -0.1);
+	glVertex3f(0.1, 0.0, 0.0);
+	glVertex3f(0.0, 0.0, 0.1);
+	glVertex3f(-0.1, 0.0, 0.0);
+	glEnd();
+
+	glBegin(mode);
+	glVertex3f(0.0, 0.0, -0.1);
+	glVertex3f(0.0, 0.1, 0.0);
+	glVertex3f(0.0, 0.0, 0.1);
+	glVertex3f(0.0, -0.1, 0.0);
+	glEnd();
+
+	glBegin(mode);
+	glVertex3f(0.1, 0.0, 0.0);
+	glVertex3f(0.0, 0.1, 0.0);
+	glVertex3f(-0.1, 0.0, 0.0);
+	glVertex3f(0.0, -0.1, 0.0);
+	glEnd();
+
+	if (!(options & K_RENDER_JOINTS)) glPopMatrix();
+
+	return TRUE;
+}
+
+int kudu_draw_all_joints(KuduJoint *joint, int options)
+{
+	if (joint == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	KuduJoint *current_joint = NULL;
+	float colour_joint_default[4], colour_joint_selected[4];
+
+	kudu_options_get_float(KO_JOINTS_COLOUR_DEFAULT, 4, colour_joint_default);
+	kudu_options_get_float(KO_JOINTS_COLOUR_SELECTED, 4, colour_joint_selected);
+
+	do {
+		if (current_joint == NULL) current_joint = joint;
+		else	current_joint = current_joint->next_joint;
+
+		kudu_draw_joint(current_joint, options, colour_joint_default, colour_joint_selected);
+	} while (current_joint->next_joint != NULL);
+
+	return TRUE;
+}
+
 void kudu_draw_bone_graphic(float bone_length, int options)
 {
 	float mid_point = (bone_length / 10);
@@ -306,14 +389,6 @@ int kudu_draw_bone_axes(float bone_length, int options, float *axes_colours)
 	glVertex3f(mid_point, 0.0, -0.1);
 	glEnd();
 
-/*		glBegin(GL_LINE_LOOP);
-		for (a = 0; a < 360; a+=10) {
-			x = (bone_length * sin((float)a*RADDEG));
-			y = (bone_length * cos((float)a*RADDEG));
-			glVertex3f(0.0, x, y);
-		}
-		glEnd();*/
-
 	glColor3fv(&axes_colours[3]);
 	glBegin(GL_LINES);
 	glVertex3f(0.0, 0.0, 0.0);
@@ -325,18 +400,11 @@ int kudu_draw_bone_axes(float bone_length, int options, float *axes_colours)
 	glVertex3f(0.0, bone_length, 0.0);
 	glVertex3f(-0.1, mid_point, 0.0);
 	glEnd();
-/*		glBegin(GL_LINE_LOOP);
-		for (a = 0; a < 360; a+=10) {
-			x = (bone_length * sin((float)a*RADDEG));
-			y = (bone_length * cos((float)a*RADDEG));
-			glVertex3f(x, 0.0, y);
-		}
-		glEnd();*/
 
 	glColor3fv(&axes_colours[6]);
 	glBegin(GL_LINES);
 	glVertex3f(0.0, 0.0, 0.0);
-	glVertex3f(0.0, 0.0, 1.0);
+	glVertex3f(0.0, 0.0, bone_length);
 
 	glVertex3f(0.0, 0.0, bone_length);
 	glVertex3f(0.1, 0.0, mid_point);
@@ -344,22 +412,81 @@ int kudu_draw_bone_axes(float bone_length, int options, float *axes_colours)
 	glVertex3f(0.0, 0.0, bone_length);
 	glVertex3f(-0.1, 0.0, mid_point);
 	glEnd();
-/*		glBegin(GL_LINE_LOOP);
-		for (a = 0; a < 360; a+=10) {
-			x = (bone_length * sin((float)a*RADDEG));
-			y = (bone_length * cos((float)a*RADDEG));
-			glVertex3f(x, y, 0.0);
-		}
-		glEnd();*/
 
+	return TRUE;
 }
 
+/* Small performance increase by only calculating cos and sin values once */
+static float sinv[36], cosv[36];
+void kudu_draw_bone_rgb_circles_init(void)
+{
+	static int done = FALSE;
+
+	if (done) return;
+
+	int a, b = 0;
+
+	for (a = 0; a < 360; a+=10) {
+		sinv[b] = (float)sin((float)a * RADDEG);
+		cosv[b] = (float)cos((float)a * RADDEG);
+		b++;
+	}
+
+	done = TRUE;
+}
+
+int kudu_draw_bone_rgb_circles(float bone_length, float *colours)
+{
+	float x, y;
+	int a;
+
+	kudu_draw_bone_rgb_circles_init();
+
+	if (bone_length > 0.5) bone_length = 0.5;
+
+	glColor3fv(&colours[0]);
+	glBegin(GL_LINE_LOOP);
+	for (a = 0; a < 36; a++) {
+		/*x = (bone_length * sin((float)a*RADDEG));
+		y = (bone_length * cos((float)a*RADDEG));*/
+		x = (bone_length * sinv[a]);
+		y = (bone_length * cosv[a]);
+		glVertex3f(0.0, x, y);
+	}
+	glEnd();
+
+	glColor3fv(&colours[3]);
+	glBegin(GL_LINE_LOOP);
+	for (a = 0; a < 36; a++) {
+		/*x = (bone_length * sin((float)a*RADDEG));
+		y = (bone_length * cos((float)a*RADDEG));*/
+		x = (bone_length * sinv[a]);
+		y = (bone_length * cosv[a]);
+		glVertex3f(x, 0.0, y);
+	}
+	glEnd();
+
+	glColor3fv(&colours[6]);
+	glBegin(GL_LINE_LOOP);
+	for (a = 0; a < 36; a++) {
+		/*x = (bone_length * sin((float)a*RADDEG));
+		y = (bone_length * cos((float)a*RADDEG));*/
+		x = (bone_length * sinv[a]);
+		y = (bone_length * cosv[a]);
+		glVertex3f(x, y, 0.0);
+	}
+	glEnd();
+
+	return TRUE;
+}
 
 int kudu_draw_bone(KuduBone *bone, int options)
 {
-	KuduBone *current_bone;
-	int gone_back, children = FALSE;
+	KuduBone *current_bone, *pbone;
+	int gone_back, children = FALSE, a;
 	float tp[3], colour_bone_selected[4], colour_bone_default[4], colour_bone_children[4], axes_colours[9];
+	float colour_joint_default[4], colour_joint_selected[4], len;
+	KuduJoint *s_joint, *e_joint;
 
 	if (bone == NULL) return FALSE;
 
@@ -367,6 +494,11 @@ int kudu_draw_bone(KuduBone *bone, int options)
 	kudu_options_get_float(KO_BONES_COLOUR_SELECTED, 4, colour_bone_selected);
 	kudu_options_get_float(KO_BONES_COLOUR_CHILDREN, 4, colour_bone_children);
 	kudu_options_get_float(KO_AXES_COLOUR, 9, axes_colours);
+
+	if (options & K_RENDER_JOINTS) {
+		kudu_options_get_float(KO_JOINTS_COLOUR_DEFAULT, 4, colour_joint_default);
+		kudu_options_get_float(KO_JOINTS_COLOUR_SELECTED, 4, colour_joint_selected);
+	}
 
 	current_bone = bone;
 	gone_back = FALSE;
@@ -381,49 +513,62 @@ int kudu_draw_bone(KuduBone *bone, int options)
 					else glColor4fv(colour_bone_default);
 			}
 
+			pbone = current_bone->parent;
 			if (options & K_RENDER_SELECT) glLoadName((unsigned int)current_bone);
 
-			/*if ((current_bone->parent == NULL) || (current_bone->selected)) {
-				glPushMatrix();
-				glTranslatef(current_bone->posX, current_bone->posY, current_bone->posZ);
-				glMultMatrixf(current_bone->matrix[0]);
-				glCallList(program.bone_graphic_lists);
-				if (current_bone->selected) glCallList(program.bone_graphic_lists+2);
-				glPopMatrix();
-			}*/
+			s_joint = current_bone->s_joint;
+			e_joint = current_bone->e_joint;
+
+			len = current_bone->length;
+			if (program.mode == PROGRAM_MODE_ANIMATION) len += current_bone->plength;
 
 			glPushMatrix();
-			/*glTranslatef(current_bone->lineX, current_bone->lineY, current_bone->lineZ);*/
-			glTranslatef(current_bone->posX, current_bone->posY, current_bone->posZ);
-			glMultMatrixf(current_bone->matrix[0]);
+			/* Translate to bone pos */
+			if (program.mode == PROGRAM_MODE_ANIMATION) {
+				if (current_bone->parent != NULL) glTranslatef(s_joint->ppos[0], s_joint->ppos[1], s_joint->ppos[2]);
+				else  glTranslatef(s_joint->ppos[0] + s_joint->pos[0], s_joint->ppos[1] + s_joint->pos[1],
+						   s_joint->ppos[2] + s_joint->pos[2]);
+				glPushMatrix();
+				glMultMatrixf(current_bone->pmatrix);		/* Orient Axis to bone rotations */
+			} else	{
+				glTranslatef(s_joint->pos[0], s_joint->pos[1], s_joint->pos[2]);
+				glPushMatrix();
+				glMultMatrixf(current_bone->matrix);		/* Orient Axis to bone rotations */
+			}
 
-			if (options & K_RENDER_SELECT) kudu_draw_bone_graphic(current_bone->length, K_RENDER_FACES);
-			else kudu_draw_bone_graphic(current_bone->length, K_RENDER_EDGES);
-
-			if ((options & K_RENDER_SHOW_AXES) || ((options & K_RENDER_SHOW_SELECTED_AXES) && (current_bone->selected)))
-				kudu_draw_bone_axes(current_bone->length, K_RENDER_EDGES, axes_colours);
-
-			/*glCallList(program.bone_graphic_lists+1);
-			if (current_bone->selected) glCallList(program.bone_graphic_lists+2);*/
-			glPopMatrix();
-
-			/*glBegin(GL_LINES);
-			glVertex3f(current_bone->posX, current_bone->posY, current_bone->posZ);
-			glVertex3f(current_bone->lineX, current_bone->lineY, current_bone->lineZ);
-			glEnd();*/
-
-			if (options & K_RENDER_SHOW_INFO) {
-				tp[0] = (current_bone->lineX + current_bone->posX) / 2;
-				tp[1] = (current_bone->lineY + current_bone->posY) / 2;
-				tp[2] = (current_bone->lineZ + current_bone->posZ) / 2;
-				kudu_font_builtin_write_3d(tp[0], tp[1], tp[2], current_bone->name);
-			} else
-			if ((options & K_RENDER_SHOW_SELECTED_INFO) && (current_bone->selected)) {
-				tp[0] = (current_bone->lineX + current_bone->posX) / 2;
-				tp[1] = (current_bone->lineY + current_bone->posY) / 2;
-				tp[2] = (current_bone->lineZ + current_bone->posZ) / 2;
+			/* Display bone's name if wanted */
+			if ((options & K_RENDER_SHOW_INFO) || ((options & K_RENDER_SHOW_SELECTED_INFO) && (current_bone->selected))) {
+				//for (a = 0; a < 3; a++) tp[a] = (e_joint->pos[a] + s_joint->pos[a]) / 2;
+				tp[0] = 0.0;
+				tp[1] = 0.0;
+				tp[2] = len / 2;
 				kudu_font_builtin_write_3d(tp[0], tp[1], tp[2], current_bone->name);
 			}
+
+
+			if (options & K_RENDER_SELECT) kudu_draw_bone_graphic(current_bone->length, K_RENDER_FACES);
+			else kudu_draw_bone_graphic(len, K_RENDER_EDGES);
+
+			/* Render the e_joint of every bone - the e_joint being unique on each bone */
+			/* Only render the s_joint if bone is a root bone */
+			if (options & K_RENDER_JOINTS) {
+				if (current_bone->parent == NULL) kudu_draw_joint(s_joint, options, colour_joint_default, colour_joint_selected);
+				glTranslatef(0.0, 0.0, len);
+				kudu_draw_joint(e_joint, options, colour_joint_default, colour_joint_selected);
+			}
+
+			glPopMatrix();
+
+			/* Render Axis */
+			if ((options & K_RENDER_SHOW_AXES) || ((options & K_RENDER_SHOW_SELECTED_AXES) && (current_bone->selected))) {
+				if (pbone != NULL) {
+					glMultMatrixf(pbone->matrix);
+					/*glTranslatef(0.0, 0.0, pbone->length);*/
+				}
+				kudu_draw_bone_rgb_circles(len / 2, axes_colours);
+			}
+
+			glPopMatrix();
 
 		}
 
@@ -523,7 +668,7 @@ int kudu_draw_edge(KuduEdge *edge, int options)	/* Draws an edge */
 		else if (edge->left_face != NULL) face = edge->left_face;
 		if (face != NULL) material = face->material;
 
-		glColor3fv(material->diffuse);
+		if (material != NULL) glColor3fv(material->diffuse);
 	} else {
 		/* No colours, render edge with unselected colour */
 		glColor3fv(colour_default);
@@ -545,16 +690,22 @@ int kudu_draw_face(KuduFace *face, int options)
 {
 	if (face == NULL) return FALSE;
 
-	KuduEdge *current_edge = face->edge;
-	if (current_edge == NULL) return FALSE;
+	if (face->edge == NULL) return FALSE;
+
 	float mat[] = {0.0, 0.0, 0.0, 0.0};
+	float texv[2];
 	int lights_on = (options & K_RENDER_LIGHTING);
 	int flat_shading = (options & K_RENDER_FLAT_SHADING);
 	int show_selected = (options & K_RENDER_SHOW_SELECTED) + (options & K_RENDER_SHOW_SELECTED_FACES);
 	int lights = glIsEnabled(GL_LIGHTING);
+	int textures = (options & K_RENDER_TEXTURES);
 
 	KuduMaterial *material = face->material;
 	KuduVertex *current_vertex;
+	KuduTexture *texture = NULL;
+	KuduEdge *current_edge;
+
+	if (material != NULL) texture = material->texture;
 
 	/* No lighting was requested, but gl lights are still on.. switch them off */
 	if ((!lights_on) && (lights)) glDisable(GL_LIGHTING);
@@ -574,7 +725,7 @@ int kudu_draw_face(KuduFace *face, int options)
 		} else {
 			glColor3fv(material->diffuse);
 		}
-	} else if (options & K_RENDER_NO_COLOURS) {
+	} else if ((options & K_RENDER_NO_COLOURS) && (material != NULL)) {
 		if (lights_on) {
 			glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, colour_selected);
 			glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat);
@@ -585,29 +736,42 @@ int kudu_draw_face(KuduFace *face, int options)
 		}
 	}
 
+	if ((textures) && (texture != NULL)) {
+		glBindTexture(GL_TEXTURE_2D, texture->tex);
+		glEnable(GL_TEXTURE_2D);
+	} else textures = FALSE;
+
 	if (options & K_RENDER_SELECT) glPushName((unsigned int)face);
 	glBegin(GL_POLYGON);
 	if ((lights_on) && (flat_shading)) glNormal3fv(face->fn);
+	if (kudu_face_for_each_edge_do(face)) {
+		while ((current_edge = kudu_face_for_each_edge_next_do()) != NULL) {
+			if (current_edge->left_face == face) {
+				current_vertex = current_edge->start_vertex;
+				if (textures) {
+					texv[0] = current_edge->s_uv[0];
+					texv[1] = current_edge->s_uv[1];
+				}
+			} else
+			if (current_edge->right_face == face) {
+				current_vertex = current_edge->end_vertex;
+				if (textures) {
+					texv[0] = current_edge->e_uv[0];
+					texv[1] = current_edge->e_uv[1];
+				}
+			} else	current_vertex = NULL;
 
-	do {
-		if (current_edge->right_face == face) {
-			current_vertex = current_edge->start_vertex;
-			current_edge = current_edge->right_succ;
-		} else
-		if (current_edge->left_face == face) {
-			current_vertex = current_edge->end_vertex;
-			current_edge = current_edge->left_succ;
-		} else	break;
-
-		if (current_vertex != NULL) {
-			if ((lights_on) && (!flat_shading)) glNormal3fv(current_vertex->n);
-			glVertex3fv(current_vertex->av);
+			if (current_vertex != NULL) {
+				if ((lights_on) && (!flat_shading)) glNormal3fv(current_vertex->n);
+				if (textures) glTexCoord2fv(texv);
+				glVertex3fv(current_vertex->av);
+			}
 		}
-
-	} while ((current_edge != face->edge) && (current_edge != NULL));
+	}
 
 	glEnd();
 	if (options & K_RENDER_SELECT) glPopName();
+	glDisable(GL_TEXTURE_2D);
 	/* Turn gl lights back on if they were */
 	if ((!lights_on) && (lights)) glEnable(GL_LIGHTING);
 

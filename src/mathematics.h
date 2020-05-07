@@ -26,26 +26,40 @@
 
 #define CLAMP_360(deg) (kudu_math_degrees_clamp(&deg))
 
-void kudu_math_angles_between(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLfloat*, GLfloat*);
+void kudu_math_angles_between(float, float, float, float, float, float, float*, float*);
 int kudu_math_angles_between_v(float*, float*, float*, float*);
-void kudu_math_degrees_clamp(GLfloat*);
-void kudu_math_matrix_multiply(GLfloat[4][4], GLfloat[4][4]);
-void kudu_math_matrix_copy(GLfloat[4][4], GLfloat[4][4]);
-void kudu_math_translate_vertex(GLfloat*, GLfloat*, GLfloat*, GLfloat[4][4]);
-void kudu_math_translate_vertex_inverse(GLfloat*, GLfloat*, GLfloat*, GLfloat[4][4]);
-int kudu_math_vertex_normalize(GLfloat*);
-int kudu_math_normal_vector(GLfloat[3], GLfloat[3], GLfloat[3], GLfloat*);
+float kudu_math_distance_between(float*, float*);
+void kudu_math_degrees_clamp(float*);
+
+float kudu_math_vector_dot_product(float[3], float[3]);
+
+void kudu_math_matrix_multiply(float[16], float[16]);
+void kudu_math_matrix_translate_by_vertex3(float[16], float, float, float);
+void kudu_math_matrix_translate_by_vertex3v(float[16], float[3]);
+void kudu_math_matrix_copy(float[16], float[16]);
+int kudu_math_matrix_inverse(float[16]);
+void kudu_math_transform_vertex3_by_matrix(float*, float*, float*, float[16]);
+void kudu_math_transform_vertex3v_by_matrix(float*, float[16]);
+void kudu_math_partial_transform_vertex(float*, float*, float*, float[16], float);
+void kudu_math_transform_vertex3_by_matrix_transpose(float*, float*, float*, float[16]);
+void kudu_math_transform_vertex3v_by_matrix_transpose(float*, float[16]);
+int kudu_math_vertex_normalize(float*);
+int kudu_math_normal_vector(float[3], float[3], float[3], float*);
 int kudu_math_are_vertices_aligned(GLfloat[3], GLfloat[3], GLfloat[3]);
+void kudu_math_matrix_set_identity(float[16]);
+void kudu_math_matrix_set_translation(float[16], float, float, float);
 
+void kudu_math_quat_copy(float[4], float[4]);
+void kudu_math_quat_multiply(float[4], float[4]);
+void kudu_math_quat_to_matrix(float[4], float[16]);
+void kudu_math_quat_normalize(float[4]);
+void kudu_math_quat_rotate(float[4], float, float, float, float);
+void kudu_math_quat_set_identity(float[4]);
+void kudu_math_quat_from_euler(float[4], float, float, float);
+void kudu_math_quat_apply_rotation(float[4], int, float);
+void kudu_math_quat_to_euler(float[4], float*, float*, float*);
+void kudu_math_quat_aim(float[4], float[3], float[3]);
+void kudu_math_quat_invert(float[4]);
 
-/* Older Function Names */
-void ANGLES_BETWEEN(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLfloat*, GLfloat*);
-void CLAMP_DEGREES(GLfloat*);
-void MULTIPLY_MATRIX(GLfloat[4][4], GLfloat[4][4]);
-void COPY_MATRIX(GLfloat[4][4], GLfloat[4][4]);
-void CALCULATE_VERTEX(GLfloat*, GLfloat*, GLfloat*, GLfloat[4][4]);
-void CALCULATE_INVERSE_VERTEX(GLfloat*, GLfloat*, GLfloat*, GLfloat[4][4]);
-void NORMALIZE(GLfloat*);
-void NORMAL_VECTOR(GLfloat[3], GLfloat[3], GLfloat[3], GLfloat*);
 
 #endif /* MATHEMATICS_H_INCLUDED */

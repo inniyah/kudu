@@ -1,5 +1,8 @@
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 if this is a CVS version of Kudu */
+#undef CVS_VERSION
+
 /* Define to 1 if you have the <dirent.h> header file. */
 #undef HAVE_DIRENT_H
 
@@ -8,6 +11,9 @@
 
 /* Define to 1 if you have the `ftime' function. */
 #undef HAVE_FTIME
+
+/* Define to 1 if we have the glWindowPos2i function */
+#undef HAVE_GLWINDOWPOS
 
 /* Define to 1 if you have the <GL/glu.h> header file. */
 #undef HAVE_GL_GLU_H

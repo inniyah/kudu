@@ -21,7 +21,7 @@
 /******************************************************************************/
 #include "object.h"
 
-static int OBJECT_ID = 1;
+static int OBJECT_ID = 1, c_file_ver[2];
 static KuduObject *do_object = NULL;
 
 int kudu_object_force_next_id(int objectID)
@@ -222,6 +222,8 @@ KuduObject *kudu_object_new(KuduObject *previous_object)
 
 	for (a = 0; a < 3; a++) object->position[a] = 0.0;
 	object->id = OBJECT_ID++;
+	/*object->joint_list = kudu_joint_list_new();*/
+	object->joint = NULL;
 	object->bone = NULL;
 	object->material = NULL;
 	object->skin = NULL;
@@ -230,15 +232,18 @@ KuduObject *kudu_object_new(KuduObject *previous_object)
 	object->author = NULL;
 	object->email = NULL;
 	object->url = NULL;
+	object->texture = NULL;
 	object->author_length = 0;
 	object->email_length = 0;
 	object->url_length = 0;
+	object->next_joint_id = 1;
 	object->next_bone_id = 1;
 	object->next_edge_id = 1;
 	object->next_vertex_id = 1;
 	object->next_face_id = 1;
 	object->next_shape_id = 1;
 	object->next_material_id = 1;
+	object->next_texture_id = 1;
 	sprintf(object->name, "Object %d", object->id);
 
 
@@ -337,6 +342,7 @@ int kudu_object_destroy(KuduObject *object)
 	kudu_bone_destroy_with_children(object->bone);
 	kudu_material_destroy_all(object->material);
 	kudu_shape_destroy_all(object->skin);
+	/*kudu_joint_list_destroy(object->joint_list);*/
 	/*kudu_draw_item_destroy_all(object->draw_item);*/
 	/*kudu_vertex_destroy_all(object->vertex);*/
 
@@ -662,6 +668,7 @@ int kudu_object_save_bones(KuduBone *bone, FILE *file)
 	}
 
 	KuduBone *current_bone, *p_bone;
+	KuduJoint *joint;
 	int gone_back = FALSE, p;
 	unsigned char nl;
 
@@ -680,10 +687,20 @@ int kudu_object_save_bones(KuduBone *bone, FILE *file)
 			if (nl > 0) fwrite(current_bone->name, nl, 1, file);
 
 			/* h, v, r angles and length of bone */
-			fwrite(&current_bone->hAngle, sizeof(float), 1, file);
+			/*fwrite(&current_bone->hAngle, sizeof(float), 1, file);
 			fwrite(&current_bone->vAngle, sizeof(float), 1, file);
 			fwrite(&current_bone->rAngle, sizeof(float), 1, file);
+			fwrite(&current_bone->length, sizeof(float), 1, file);*/
+
+			/* Important quaternions */
+			fwrite(current_bone->lquat, sizeof(float), 4, file);
+			fwrite(current_bone->gquat, sizeof(float), 4, file);
+
+			/* Bone length */
 			fwrite(&current_bone->length, sizeof(float), 1, file);
+
+			/* Oops... there's no reason to save pose quats... */
+			/*fwrite(current_bone->lpquat, sizeof(float), 4, file);*/
 
 			/* Parent id, if parent is null then write own id indicating a root bone */
 			p_bone = current_bone->parent;
@@ -693,9 +710,13 @@ int kudu_object_save_bones(KuduBone *bone, FILE *file)
 
 			if (p == current_bone->id) {	/* Root bone save the bone position */
 				fputc(KOF_BONE_POS, file);
-				fwrite(&current_bone->posX, sizeof(float), 1, file);
+				joint = current_bone->s_joint;
+
+				fwrite(&joint->pos[0], sizeof(float), 3, file);
+
+				/*fwrite(&current_bone->posX, sizeof(float), 1, file);
 				fwrite(&current_bone->posY, sizeof(float), 1, file);
-				fwrite(&current_bone->posZ, sizeof(float), 1, file);
+				fwrite(&current_bone->posZ, sizeof(float), 1, file);*/
 			}
 		}
 
@@ -723,6 +744,7 @@ int kudu_object_save_vertices(KuduVertex *vertex, FILE *file)
 
 	KuduVertex *current_vertex = NULL;
 	KuduBone *bone;
+	int a;
 
 	do {
 		if (current_vertex == NULL) current_vertex = vertex;
@@ -736,14 +758,19 @@ int kudu_object_save_vertices(KuduVertex *vertex, FILE *file)
 		/* Vertex x,y,z */
 		fwrite(current_vertex->v, sizeof(float), 3, file);
 
-		bone = current_vertex->bone;
-		if (bone != NULL) {	/* Vertex is attached, save attachment info */
+		if (current_vertex->num_bones > 0) {	/* Vertex is attached, save attachment info */
 			/* Vertex attachment properties header */
 			fputc(KOF_VERTEX_ATTACHMENT, file);
-			/* Attached percent */
-			fputc(current_vertex->attached_percent, file);
-			/* Bone id */
-			fwrite(&bone->id, sizeof(int), 1, file);
+			/* No. of attached bones */
+			fwrite(&current_vertex->num_bones, sizeof(int), 1, file);
+
+			for (a = 0; a < current_vertex->num_bones; a++) {
+				bone = current_vertex->bone[a];
+				/* Bone id */
+				fwrite(&bone->id, sizeof(int), 1, file);
+				/* Attached percent */
+				fwrite(&current_vertex->influence[a], sizeof(float), 1, file);
+			}
 		}
 
 	} while (current_vertex->next_vertex != NULL);
@@ -830,6 +857,15 @@ int kudu_object_save_edges(KuduEdge *edge, FILE *file)
 
 		fwrite(misc, sizeof(int), 8, file);
 
+		/* If all tex coords are 0 then don't save them, as most likely there is no texture... */
+		/* .. even if they are, default values are 0 any way... */
+		if ((current_edge->s_uv[0] != 0) || (current_edge->s_uv[1] != 0) ||
+		    (current_edge->e_uv[0] != 0) || (current_edge->e_uv[1] != 0)) {
+			fputc(KOF_EDGE_TEX_COORDS, file);
+			fwrite(current_edge->s_uv, sizeof(float), 2, file);
+			fwrite(current_edge->e_uv, sizeof(float), 2, file);
+		}
+
 	} while (current_edge->next_edge != NULL);
 
 	return TRUE;
@@ -874,6 +910,8 @@ int kudu_object_save_materials(KuduMaterial *material, FILE *file)
 	}
 
 	KuduMaterial *current_material = NULL;
+	KuduTexture *texture = NULL;
+	KuduImage *image = NULL;
 	unsigned char nl;
 
 	do {
@@ -900,6 +938,20 @@ int kudu_object_save_materials(KuduMaterial *material, FILE *file)
 		fwrite(current_material->emission, sizeof(float), 4, file);
 		/* Shininess */
 		fwrite(&current_material->shininess, sizeof(float), 1, file);
+
+		texture = current_material->texture;
+		if (texture != NULL) image = texture->image;
+		if (image != NULL) {
+			fputc(KOF_TEXTURE, file);	/* Texture header */
+			fputc(KOFS_TEXTURE_TYPE_INTERNAL_RAW, file);	/* Texture type sub-header ... for now just do internal */
+
+			fwrite(&image->width, sizeof(unsigned int), 1, file);
+			fwrite(&image->height, sizeof(unsigned int), 1, file);
+			fwrite(&image->channels, sizeof(unsigned int), 1, file);
+			fwrite(&image->bpp, sizeof(unsigned int), 1, file);
+			fwrite(&image->size, sizeof(unsigned int), 1, file);
+			fwrite(image->data, sizeof(unsigned char), image->size, file);
+		}
 
 	} while (current_material->next_material != NULL);
 
@@ -977,8 +1029,10 @@ int kudu_object_load_bone(KuduObject *object, FILE *file, int what)
 	}
 
 	KuduBone *pbone = NULL;
+	KuduJoint *joint;
 	unsigned char nl;
 	int p, id;
+	float x, y, h, v, r;
 
 	/* Initialize the bone buffer if it is null */
 	if (buffer == NULL) {
@@ -1019,11 +1073,30 @@ int kudu_object_load_bone(KuduObject *object, FILE *file, int what)
 			bone->name[nl] = '\0';
 		}
 
-		/* h, v, r angles and length of bone */
-		fread(&bone->hAngle, sizeof(float), 1, file);
-		fread(&bone->vAngle, sizeof(float), 1, file);
-		fread(&bone->rAngle, sizeof(float), 1, file);
-		fread(&bone->length, sizeof(float), 1, file);
+
+		if ((c_file_ver[0] >= 0) && (c_file_ver[1] > 1)) {
+			fread(bone->lquat, sizeof(float), 4, file);
+			fread(bone->gquat, sizeof(float), 4, file);
+
+			/* Stupid mistake in ver 0.2 ... was saving local pose quat ...
+			   just skip the bytes and ignore them .. */
+			if (c_file_ver[1] == 2)	fseek(file, (sizeof(float)*4), SEEK_CUR);
+			/* Another stupid mistake... was not saving bone length... */
+			else fread(&bone->length, sizeof(float), 1, file);
+
+		} else if ((c_file_ver[0] == 0) && (c_file_ver[1] < 2)) {
+			/* h, v, r angles and length of bone */
+			fread(&h, sizeof(float), 1, file);
+			fread(&v, sizeof(float), 1, file);
+			fread(&r, sizeof(float), 1, file);
+			fread(&bone->length, sizeof(float), 1, file);
+
+			kudu_bone_apply_rotation(bone, v, 0, FALSE);
+			kudu_bone_apply_rotation(bone, h, 1, FALSE);
+			bone->quat[0] = h;
+			bone->quat[1] = v;
+			bone->quat[2] = r;
+		}
 
 		/* Parent id */
 		fread(&p, sizeof(int), 1, file);
@@ -1055,56 +1128,90 @@ int kudu_object_load_bone(KuduObject *object, FILE *file, int what)
 
 		kudu_bone_adopt_child(pbone, bone);
 
-	} if (what == KOF_BONE_POS) {	/* Load the position of the last loaded bone */
-					/* Should only be saved for root bones */
+	} else if (what == KOF_BONE_POS) {	/* Load the position of the last loaded bone */
+						/* Should only be saved for root bones */
 		if (bone == NULL) {
 			kudu_error(KE_OBJECT_INVALID);
 			return FALSE;
 		}
-		fread(&bone->posX, sizeof(float), 1, file);
+		joint = bone->s_joint;
+		fread(&joint->pos[0], sizeof(float), 3, file);
+
+		/*fread(&bone->posX, sizeof(float), 1, file);
 		fread(&bone->posY, sizeof(float), 1, file);
-		fread(&bone->posZ, sizeof(float), 1, file);
+		fread(&bone->posZ, sizeof(float), 1, file);*/
 	}
 
 	return TRUE;
 }
 
-int kudu_object_load_material(KuduObject *object, FILE *file)
+int kudu_object_load_material(KuduObject *object, FILE *file, int what)
 {
+	static KuduMaterial *current_material = NULL;
+
 	if ((object == NULL) || (file == NULL)) {
 		kudu_error(KE_OBJECT_INVALID);
 		return FALSE;
 	}
 
-	KuduMaterial *current_material;
 	unsigned char nl;
+	KuduTexture *texture = NULL;
+	KuduImage *image = NULL;
 
-	current_material = kudu_material_new(object, object->material);
-	if (current_material == NULL) return FALSE;
+	switch (what) {
+		case KOF_MATERIAL:
+			current_material = kudu_material_new(object, object->material);
+			if (current_material == NULL) return FALSE;
 
-	if (object->material == NULL) object->material = current_material;
+			if (object->material == NULL) object->material = current_material;
 
-	/* Material id */
-	fread(&current_material->id, sizeof(int), 1, file);
-	/* Length of name */
+			/* Material id */
+			fread(&current_material->id, sizeof(int), 1, file);
+			/* Length of name */
 
-	fread(&nl, sizeof(unsigned char), 1, file);
-	/* Name if longer than 0 */
-	if (nl > 0) {
-		fread(current_material->name, nl, 1, file);
-		current_material->name[nl] = '\0';
+			fread(&nl, sizeof(unsigned char), 1, file);
+			/* Name if longer than 0 */
+			if (nl > 0) {
+				fread(current_material->name, nl, 1, file);
+				current_material->name[nl] = '\0';
+			}
+
+			/* Diffuse */
+			fread(current_material->diffuse, sizeof(float), 4, file);
+			/* Ambient */
+			fread(current_material->ambient, sizeof(float), 4, file);
+			/* Specular */
+			fread(current_material->specular, sizeof(float), 4, file);
+			/* Emission */
+			fread(current_material->emission, sizeof(float), 4, file);
+			/* Shininess */
+			fread(&current_material->shininess, sizeof(float), 1, file);
+			break;
+
+		case KOF_TEXTURE:
+			fread(&nl, sizeof(unsigned char), 1, file);
+			switch (nl) {
+				case KOFS_TEXTURE_TYPE_EXTERNAL:
+					break;
+				case KOFS_TEXTURE_TYPE_INTERNAL_RAW:
+					texture = kudu_texture_new(object, object->texture);
+					image = kudu_image_new();
+					fread(&image->width, sizeof(unsigned int), 1, file);
+					fread(&image->height, sizeof(unsigned int), 1, file);
+					fread(&image->channels, sizeof(unsigned int), 1, file);
+					fread(&image->bpp, sizeof(unsigned int), 1, file);
+					fread(&image->size, sizeof(unsigned int), 1, file);
+
+					image->data = (unsigned char*)malloc(image->size);
+					fread(image->data, sizeof(unsigned char), image->size, file);
+
+					kudu_texture_assign_image(texture, image);
+					break;
+			}
+			if (object->texture == NULL) object->texture = texture;
+			current_material->texture = texture;
+			break;
 	}
-
-	/* Diffuse */
-	fread(current_material->diffuse, sizeof(float), 4, file);
-	/* Ambient */
-	fread(current_material->ambient, sizeof(float), 4, file);
-	/* Specular */
-	fread(current_material->specular, sizeof(float), 4, file);
-	/* Emission */
-	fread(current_material->emission, sizeof(float), 4, file);
-	/* Shininess */
-	fread(&current_material->shininess, sizeof(float), 1, file);
 
 	return TRUE;
 }
@@ -1152,7 +1259,8 @@ int kudu_object_load_vertex(KuduObject *object, FILE *file, int what)
 
 	KuduVertex *current_vertex;
 	KuduBone *bone;
-	int id;
+	int id, num, a;
+	float influence;
 
 	/* Resolve last shape in skin list / make sure we still have the last shape */
 	if ((current_shape == NULL) || (current_shape->next_shape != NULL)) {
@@ -1184,12 +1292,47 @@ int kudu_object_load_vertex(KuduObject *object, FILE *file, int what)
 			if (current_vertex->next_vertex != NULL) current_vertex = current_vertex->next_vertex;
 			if (current_vertex == NULL) return FALSE;
 
-			/* Attached percent */
-			fread(&current_vertex->attached_percent, sizeof(unsigned char), 1, file);
-			/* Bone id */
-			fread(&id, sizeof(int), 1, file);
-			if (object->bone != NULL) {
-				current_vertex->bone = kudu_bone_find_with_id(object->bone, id);
+			if ((c_file_ver[0] >= 0) && (c_file_ver[1] > 1)) {
+				/* No. of attached bones */
+				fread(&num, sizeof(int), 1, file);
+
+				for (a = 0; a < num; a++) {
+					/* Bone id */
+					fread(&id, sizeof(int), 1, file);
+					/* Influence */
+					fread(&influence, sizeof(float), 1, file);
+
+					/* Assign the bone to the vertex */
+					if (object->bone != NULL) {
+						bone = kudu_bone_find_with_id(object->bone, id);
+						kudu_vertex_set_bone_influence(current_vertex, bone, influence);
+					}
+				}
+
+			} else if ((c_file_ver[0] == 0) && (c_file_ver[1] < 2)) { /* Older file version... */
+				/* Attached percent */
+				fread(&current_vertex->attached_percent, sizeof(unsigned char), 1, file);
+				influence = (float)current_vertex->attached_percent;
+				/* Bone id */
+				fread(&id, sizeof(int), 1, file);
+				if (object->bone != NULL) {
+					bone = kudu_bone_find_with_id(object->bone, id);
+					if (bone != NULL) {
+						/* The older internal system worked a bit differently...
+						   with the new system an older file will never be 100% exactly perfect on opening.. too bad..
+						   increasing influence by 10% makes it pretty accurate though.. */
+						influence += 10;
+						if (influence > 100) influence = 100;
+						kudu_vertex_set_bone_influence(current_vertex, bone, influence);
+
+						/* File version 0.1 only had support for a max of two bones per vertice, the second of which
+						   always was the parent of the first... if influence is less than 100% it assumes the inverse
+						   percent attachment on the parent bone. */
+						if ((influence < 100.0) && (bone->parent != NULL)) {
+							kudu_vertex_set_bone_influence(current_vertex, bone->parent, (100.0 - influence));
+						}
+					}
+				}
 			}
 			break;
 	}
@@ -1248,20 +1391,18 @@ int kudu_object_load_face(KuduObject *object, FILE *file, int what)
 int kudu_object_load_edge(KuduObject *object, FILE *file, int what)
 {
 	static KuduShape *current_shape = NULL;
+	static KuduEdge *current_edge = NULL;
 
 	if ((object == NULL) || (file == NULL)) {
-		if (current_shape != NULL) {
-			current_shape = NULL;
-			return TRUE;
-		}
-		kudu_error(KE_OBJECT_INVALID);
-		return FALSE;
+		current_shape = NULL;
+		current_edge = NULL;
+		return TRUE;
 	}
 	if (object->skin == NULL) return FALSE;
 
 	int id, misc[4], edge_ids[5], a, b;
 	KuduFace *face_list[2];
-	KuduEdge *edge_list[5], *current_edge;
+	KuduEdge *edge_list[5];
 	KuduVertex *vertex_list[2];
 
 	/* Resolve last shape in skin list / make sure we still have the last shape */
@@ -1316,6 +1457,10 @@ int kudu_object_load_edge(KuduObject *object, FILE *file, int what)
 			kudu_edge_wings_set(current_edge, edge_list[2], edge_list[1], edge_list[4], edge_list[3]);
 
 			break;
+		case KOF_EDGE_TEX_COORDS:
+			fread(current_edge->s_uv, sizeof(float), 2, file);
+			fread(current_edge->e_uv, sizeof(float), 2, file);
+			break;
 	}
 
 	return TRUE;
@@ -1367,6 +1512,10 @@ int kudu_object_load_from_file(KuduObject *object, char *filename)
 		kudu_object_destroy(object);
 		return FALSE;
 	}
+
+	/* Set the global file version varibles so that the various loading routines know which version file we are loading */
+	c_file_ver[0] = file_ver[0];
+	c_file_ver[1] = file_ver[1];
 
 	kudu_bone_force_next_id(object, 0);
 	kudu_vertex_force_next_id(object, 0);
@@ -1430,6 +1579,9 @@ int kudu_object_load_from_file(KuduObject *object, char *filename)
 			case KOF_EDGE:
 				rv = kudu_object_load_edge(object, file, KOF_EDGE);
 				break;
+			case KOF_EDGE_TEX_COORDS:
+				rv = kudu_object_load_edge(object, file, KOF_EDGE_TEX_COORDS);
+				break;
 			case KOF_VERTEX:
 				rv = kudu_object_load_vertex(object, file, KOF_VERTEX);
 				break;
@@ -1440,9 +1592,10 @@ int kudu_object_load_from_file(KuduObject *object, char *filename)
 				rv = kudu_object_load_face(object, file, KOF_FACE);
 				break;
 			case KOF_MATERIAL:
-				rv = kudu_object_load_material(object, file);
+				rv = kudu_object_load_material(object, file, KOF_MATERIAL);
 				break;
 			case KOF_TEXTURE:
+				rv = kudu_object_load_material(object, file, KOF_TEXTURE);
 				break;
 			default:
 				break;
@@ -1457,9 +1610,65 @@ int kudu_object_load_from_file(KuduObject *object, char *filename)
 	kudu_object_load_face(NULL, NULL, 0);
 	kudu_object_load_edge(NULL, NULL, 0);
 
+	kudu_object_repair_old_structure(object);
+
 	kudu_object_update(object);
 
 	return rv;
+}
+
+/* "Repair" anything that might have been changed in the case of loading an older file version... well attempt to at least :-/ */
+int kudu_object_repair_old_structure(KuduObject *object)
+{
+	if (object == NULL) return FALSE;
+
+	int a, b;
+	float v[3], ov[3], inf;
+	KuduBone *bone;
+	KuduJoint *joint;
+	KuduShape *shape;
+	KuduVertex *vertex;
+
+	/* Repair vertices loaded from version 0.1 */
+	if ((c_file_ver[0] == 0) && (c_file_ver[1] == 1)) {
+		kudu_bone_update_all(object->bone);
+
+		if (object->skin != NULL) {
+			shape = NULL;
+			for (shape = object->skin; shape != NULL; shape = shape->next_shape) {
+				if (shape->vertex != NULL)
+					for (vertex = shape->vertex; vertex != NULL; vertex = vertex->next_vertex) {
+						if (vertex->num_bones == 1) {
+							bone = vertex->bone[0];
+							joint = bone->e_joint;
+
+							kudu_math_transform_vertex3v_by_matrix(vertex->v, bone->matrix);
+							for (a = 0; a < 3; a++) vertex->v[a] += joint->pos[a];
+
+						} else if (vertex->num_bones == 2) {
+							for (a = 0; a < 3; a++) {
+								ov[a] = vertex->v[a];
+								vertex->v[a] = 0.0;
+							}
+
+							for (b = 0; b < 2; b++) {
+								bone = vertex->bone[b];
+								joint = bone->e_joint;
+								inf = (vertex->influence[b] / 100.0f);
+								for (a = 0; a < 3; a++) v[a] = ov[a];
+								kudu_math_transform_vertex3v_by_matrix(v, bone->matrix);
+								for (a = 0; a < 3; a++) {
+									vertex->v[a] += (v[a] * inf);// + (joint->pos[a] * inf);
+									if (b == 0) vertex->v[a] += joint->pos[a];
+								}
+							}
+						}
+					}
+			}
+		}	
+	}
+
+	return TRUE;
 }
 
 KuduObject *kudu_object_new_from_file(KuduObject *previous_object, char *filename)

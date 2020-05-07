@@ -27,7 +27,9 @@
 #include "vertices.h"
 
 int kudu_skin_edit_vertex(KuduVertex*, float, int);
+int kudu_skin_edit_anchor(void);
 int kudu_skin_edit_selection(KuduSelectionList*, float, float, int);
+int kudu_skin_edit_unanchor(KuduSelectionList*, int);
 int kudu_skin_edit_object(KuduObject*, float, float, int);
 
 #endif /* SKIN_EDIT_H_INCLUDED */

@@ -19,18 +19,20 @@
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  */
 /*                                                                            */
 /******************************************************************************/
-#ifndef ABOUT_H_INCLUDED
-#define ABOUT_H_INCLUDED
+#ifndef JOINTS_H_INCLUDED
+#define JOINTS_H_INCLUDED
 
 #include "globals.h"
 
 
-int kudu_about_printout(void);
-GtkWidget *kudu_about_splash_window(void);
-void kudu_about_splash_display(void);
-void kudu_about_splash_set_parent(GtkWindow*);
-gboolean kudu_about_splash_close(void);
-void kudu_about_splash_message(char*);
+/*KuduJointList *kudu_joint_list_new(void);
+int kudu_joint_list_add_joint(KuduJointList*);*/
+KuduJoint *kudu_joint_new(KuduObject*);
+int kudu_joint_destroy(KuduJoint*);
+int kudu_joint_clone_values(KuduJoint*, KuduJoint*);
+int kudu_joint_list(KuduJoint*);
+int kudu_joint_list(KuduJoint*);
+/*KuduJoint *kudu_joint_list_get_joint(KuduJointList*, int);*/
 
-#endif /* ABOUT_H_INCLUDED */
+#endif /* JOINTS_H_INCLUDED */
 

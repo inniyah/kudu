@@ -2,6 +2,7 @@ bin_PROGRAMS = kudu
 kudu_SOURCES = kudu.c kudu.h \
 		globals.h \
 		camera.c camera.h \
+		joints.c joints.h \
 		bones.c bones.h \
 		graphics.c graphics.h \
 		materials.c materials.h \
@@ -14,6 +15,7 @@ kudu_SOURCES = kudu.c kudu.h \
 		stack.c stack.h \
 		selection.c selection.h \
 		rwxobject.c rwxobject.h \
+		objobject.c objobject.h \
 		gui.c gui.h \
 		gui_vertex.c gui_vertex.h \
 		gui_bone.c gui_bone.h \
@@ -32,7 +34,9 @@ kudu_SOURCES = kudu.c kudu.h \
 		gui_object.c gui_object.h \
 		frames.c frames.h \
 		sequence.c sequence.h \
-		toolbar.c toolbar.h
+		toolbar.c toolbar.h \
+		joints_edit.c joints_edit.h \
+		uiplugin.c uiplugin.h 
 
 AM_CPPFLAGS = -DKUDU_DATADIR=\"$(pkgdatadir)\"
 LIBS =  @LIBS@ @GSTUFF_LIBS@ @GTKGLEXT_LIBS@

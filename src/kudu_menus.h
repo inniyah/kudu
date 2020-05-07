@@ -36,6 +36,7 @@ typedef enum {
 	KM_FILE_EXIT,
 	KM_FILE_IMPORT,
 	KM_FILE_IMPORT_RWX,
+	KM_FILE_IMPORT_OBJ,
 
 	/* Edit menu */
 	KM_EDIT,
@@ -46,14 +47,25 @@ typedef enum {
 	KM_EDIT_BONES_INSERT_PARENT,
 	KM_EDIT_BONES_DELETE,
 	KM_EDIT_BONES_SEP2,
-	KM_EDIT_BONES_HANGLE,
-	KM_EDIT_BONES_VANGLE,
-	KM_EDIT_BONES_RANGLE,
-	KM_EDIT_BONES_LENGTH,
+	/*KM_EDIT_BONES_HANGLE,
+	KM_EDIT_BONES_VANGLE,*/
+	KM_EDIT_BONES_ROTATE,
+	KM_EDIT_BONES_STRETCH,
+	KM_EDIT_BONES_ROT_LX,
+	KM_EDIT_BONES_ROT_LY,
+	KM_EDIT_BONES_ROT_LZ,
+	KM_EDIT_BONES_ROT_GX,
+	KM_EDIT_BONES_ROT_GY,
+	KM_EDIT_BONES_ROT_GZ,
 	KM_EDIT_BONES_MOVE_X,
 	KM_EDIT_BONES_MOVE_Y,
 	KM_EDIT_BONES_MOVE_Z,
 	KM_EDIT_BONES_PROPERTIES,
+
+	KM_EDIT_JOINTS,
+	KM_EDIT_JOINTS_MOVE_X,
+	KM_EDIT_JOINTS_MOVE_Y,
+	KM_EDIT_JOINTS_MOVE_Z,
 
 	KM_EDIT_ATTACHMENTS,
 	KM_EDIT_ATTACHMENTS_ATTACH,
@@ -143,6 +155,7 @@ typedef enum {
 	KM_PROGRAM_SUB_MODE_3,
 	KM_PROGRAM_SUB_MODE_4,
 	KM_PROGRAM_BONES_SHOW,
+	KM_PROGRAM_BONES_SHOW_JOINTS,
 	KM_PROGRAM_BONES_SHOW_NAMES,
 	KM_PROGRAM_BONES_SHOW_SELECTED_NAMES,
 	KM_PROGRAM_BONES_HIDE_NAMES,
@@ -153,6 +166,7 @@ typedef enum {
 	KM_PROGRAM_SKIN_SMOOTH,
 	KM_PROGRAM_SKIN_LIT,
 	KM_PROGRAM_SKIN_REAL_COLOURS,
+	KM_PROGRAM_SKIN_TEXTURED,
 	KM_PROGRAM_SKIN_VERTEX,
 	KM_PROGRAM_SKIN_EDGE,
 	KM_PROGRAM_SKIN_FACE,
@@ -167,10 +181,15 @@ typedef enum {
 
 typedef struct _KuduMenu {
 	GtkWidget *menu_item;
+	gulong signal;
 } KuduMenu;
 
 GtkWidget *kudu_menu_get_submenu(K_MainMenu);
 int kudu_menu_item_set_label(K_MainMenu, char*);
+int kudu_menu_item_activate_no_call(K_MainMenu);
+int kudu_menu_item_activate(K_MainMenu);
+int kudu_menu_check_item_set_state(K_MainMenu, int);
+int kudu_menu_check_item_set_state_no_call(K_MainMenu, int);
 
 GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow*, GtkAccelGroup*, GCallback);
 int kudu_gui_objects_menu_add(KuduObject*, GCallback);

@@ -23,6 +23,7 @@
 #define WINGEDGE_H_INCLUDED
 
 #include "globals.h"
+#include "mathematics.h"
 
 int kudu_edge_force_next_id(KuduObject*, int);
 int kudu_edge_next_id(KuduObject*);

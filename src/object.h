@@ -24,15 +24,19 @@
 
 #include "globals.h"
 #include "utils.h"
+#include "joints.h"
 #include "bones.h"
 #include "vertices.h"
 #include "materials.h"
 #include "wingedge.h"
 #include "options.h"
+#include "texture.h"
+#include "image.h"
 
 #define KuduObject_FILE_VER_MAJOR 0
-#define KuduObject_FILE_VER_MINOR 1
+#define KuduObject_FILE_VER_MINOR 3
 
+/* Kudu object file format sub header values */
 #define KOF_OBJECT_NAME 1
 
 #define KOF_AUTHOR_NAME 10
@@ -41,13 +45,21 @@
 
 #define KOF_BONE 20
 #define KOF_BONE_POS 21
+
 #define KOF_SHAPE 25
+
 #define KOF_EDGE 30
+#define KOF_EDGE_TEX_COORDS 31
+
 #define KOF_VERTEX 35
 #define KOF_VERTEX_ATTACHMENT 36
+
 #define KOF_FACE 40
+
 #define KOF_MATERIAL 45
 #define KOF_TEXTURE 50
+#define KOFS_TEXTURE_TYPE_EXTERNAL 1
+#define KOFS_TEXTURE_TYPE_INTERNAL_RAW 2
 
 static const unsigned char KuduObject_HEADER[12] = {0, 0, 1, 9, 0, 0, 0, 7, 1, 9, 8, 4};
 static const unsigned char KuduObject_FILE_VERSION[2] = {KuduObject_FILE_VER_MAJOR, KuduObject_FILE_VER_MINOR};
@@ -82,7 +94,7 @@ int kudu_object_save_materials(KuduMaterial*, FILE*);
 int kudu_object_save_to_file(KuduObject*, char*);
 
 int kudu_object_load_bone(KuduObject*, FILE*, int);
-int kudu_object_load_material(KuduObject*, FILE*);
+int kudu_object_load_material(KuduObject*, FILE*, int);
 int kudu_object_load_shape(KuduObject*, FILE*);
 int kudu_object_load_vertex(KuduObject*, FILE*, int);
 int kudu_object_load_face(KuduObject*, FILE*, int);
@@ -90,6 +102,7 @@ int kudu_object_load_edge(KuduObject*, FILE*, int);
 int kudu_object_load_from_file(KuduObject*, char*);
 KuduObject *kudu_object_new_from_file(KuduObject*, char*);
 
+int kudu_object_repair_old_structure(KuduObject*);
 int kudu_object_update(KuduObject*);
 int kudu_object_update_vertices(KuduObject*, int);
 

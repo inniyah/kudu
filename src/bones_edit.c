@@ -21,7 +21,7 @@
 /******************************************************************************/
 #include "bones_edit.h"
 
-int kudu_bones_edit_selection(KuduSelectionList *selected_bones_list, float opt_h, float opt_v, int bone_mode)
+int kudu_bones_edit_selection(KuduSelectionList *selected_bones_list, float opt_h, float opt_v, float hscroll, float vscroll, int bone_mode)
 {
 	if (selected_bones_list == NULL) {
 		kudu_error(KE_OBJECT_INVALID);
@@ -31,35 +31,75 @@ int kudu_bones_edit_selection(KuduSelectionList *selected_bones_list, float opt_
 	if (bone_mode == BONE_MODE_FIXED) return FALSE;
 
 	KuduBone *current_bone;
+	KuduJoint *joint;
+	int pose;
+
+	/* Are we in editor or animator mode ? */
+	/* If in animator mode set: pose = TRUE this is so that the correct quaternions get adjusted */
+	if (program.mode == PROGRAM_MODE_EDIT) pose = FALSE;
+	else if (program.mode == PROGRAM_MODE_ANIMATION) pose = TRUE;
 
 	kudu_selection_list_for_each_do(selected_bones_list);
 
 	while ((current_bone = (KuduBone*)kudu_selection_list_next_do()) != NULL) {
 		switch (bone_mode) {
-			case BONE_MODE_H_ANGLE:
-				current_bone->hAngle = current_bone->temp + opt_h;
-				kudu_math_degrees_clamp(&current_bone->hAngle);
+			case BONE_MODE_ROT_LX:
+				/*current_bone->laxis_rot[0] = current_bone->temp + opt_h;
+				kudu_math_degrees_clamp(&current_bone->laxis_rot[0]);*/
+				current_bone->temp += hscroll;
+				kudu_bone_apply_rotation(current_bone, hscroll, 0, pose);
 				break;
-			case BONE_MODE_V_ANGLE:
-				current_bone->vAngle = current_bone->temp + opt_h;
-				kudu_math_degrees_clamp(&current_bone->vAngle);
+			case BONE_MODE_ROT_LY:
+				/*current_bone->laxis_rot[1] = current_bone->temp + opt_h;
+				kudu_math_degrees_clamp(&current_bone->laxis_rot[1]);*/
+				current_bone->temp += hscroll;
+				kudu_bone_apply_rotation(current_bone, hscroll, 1, pose);
 				break;
-			case BONE_MODE_R_ANGLE:
-				current_bone->rAngle = current_bone->temp + opt_h;
-				kudu_math_degrees_clamp(&current_bone->rAngle);
+			case BONE_MODE_ROT_LZ:
+				/*current_bone->laxis_rot[2] = current_bone->temp + opt_h;
+				kudu_math_degrees_clamp(&current_bone->laxis_rot[2]);*/
+				current_bone->temp += hscroll;
+				kudu_bone_apply_rotation(current_bone, hscroll, 2, pose);
+				break;
+			case BONE_MODE_ROT_GX:
+				current_bone->temp += hscroll;
+				kudu_bone_apply_rotation(current_bone, hscroll, 3, pose);
+				break;
+			case BONE_MODE_ROT_GY:
+				current_bone->temp += hscroll;
+				kudu_bone_apply_rotation(current_bone, hscroll, 4, pose);
+				break;
+			case BONE_MODE_ROT_GZ:
+				current_bone->temp += hscroll;
+				kudu_bone_apply_rotation(current_bone, hscroll, 5, pose);
+				break;
+			case BONE_MODE_ROTATE:
+				current_bone->rotation = current_bone->temp + opt_h;
+				kudu_math_degrees_clamp(&current_bone->rotation);
 				break;
 			case BONE_MODE_STRETCH:
-				current_bone->length = current_bone->temp + (opt_h / 10);
-				if (current_bone->length < 0.0) current_bone->length = 0.0;
+				if (!pose) {
+					current_bone->length = current_bone->temp + (opt_h / 10);
+					if (current_bone->length < 0.0) current_bone->length = 0.0;
+				} else {
+					current_bone->plength = current_bone->temp + (opt_h / 10);
+					if (current_bone->plength < 0.0) current_bone->plength = 0.0;
+				}
 				break;
 			case BONE_MODE_MOVEX:
-				current_bone->posX = current_bone->temp + (opt_h / 10);
+				joint = current_bone->s_joint;
+				if (!pose) joint->pos[0] = current_bone->temp + (opt_h / 10);
+				else	joint->ppos[0] = current_bone->temp + (opt_h / 10);
 				break;
 			case BONE_MODE_MOVEY:
-				current_bone->posY = current_bone->temp + (opt_h / 10);
+				joint = current_bone->s_joint;
+				if (!pose) joint->pos[1] = current_bone->temp + (opt_h / 10);
+				else	joint->ppos[1] = current_bone->temp + (opt_h / 10);
 				break;
 			case BONE_MODE_MOVEZ:
-				current_bone->posZ = current_bone->temp + (opt_h / 10);
+				joint = current_bone->s_joint;
+				if (!pose) joint->pos[2] = current_bone->temp + (opt_h / 10);
+				else	joint->ppos[2] = current_bone->temp + (opt_h / 10);
 				break;
 		}
 	}
@@ -75,31 +115,59 @@ int kudu_bones_edit_anchor(KuduSelectionList *selection_list, int bone_mode)
 	}
 
 	KuduBone *bone;
+	KuduJoint *joint;
+	int pose;
+
+	/* Are we in editor or animator mode ? */
+	/* If in animator mode set: pose = TRUE this is so that the correct quaternions get adjusted */
+	if (program.mode == PROGRAM_MODE_EDIT) pose = FALSE;
+	else if (program.mode == PROGRAM_MODE_ANIMATION) pose = TRUE;
 
 	if (!kudu_selection_list_for_each_do(selection_list)) return TRUE;
 
 	while ((bone = (KuduBone*)kudu_selection_list_next_do()) != NULL) {
 		switch (bone_mode) {
-			case BONE_MODE_H_ANGLE:
-				bone->temp = bone->hAngle;
+			case BONE_MODE_ROT_LX:
+				/*bone->temp = bone->laxis_rot[0];*/
+				bone->temp = 0.0;
 				break;
-			case BONE_MODE_V_ANGLE:
-				bone->temp = bone->vAngle;
+			case BONE_MODE_ROT_LY:
+				/*bone->temp = bone->laxis_rot[1];*/
+				bone->temp = 0.0;
 				break;
-			case BONE_MODE_R_ANGLE:
-				bone->temp = bone->rAngle;
+			case BONE_MODE_ROT_LZ:
+				/*bone->temp = bone->laxis_rot[2];*/
+				bone->temp = 0.0;
+				break;
+			case BONE_MODE_ROT_GX:
+				bone->temp = 0.0;
+				break;
+			case BONE_MODE_ROT_GY:
+				bone->temp = 0.0;
+				break;
+			case BONE_MODE_ROT_GZ:
+				bone->temp = 0.0;
+				break;
+			case BONE_MODE_ROTATE:
+				bone->temp = bone->rotation;
 				break;
 			case BONE_MODE_STRETCH:
 				bone->temp = bone->length;
 				break;
 			case BONE_MODE_MOVEX:
-				bone->temp = bone->posX;
+				joint = bone->s_joint;
+				if (!pose) bone->temp = joint->pos[0];
+				else bone->temp = joint->ppos[0];
 				break;
 			case BONE_MODE_MOVEY:
-				bone->temp = bone->posY;
+				joint = bone->s_joint;
+				if (!pose) bone->temp = joint->pos[1];
+				else bone->temp = joint->ppos[1];
 				break;
 			case BONE_MODE_MOVEZ:
-				bone->temp = bone->posZ;
+				joint = bone->s_joint;
+				if (!pose) bone->temp = joint->pos[2];
+				else bone->temp = joint->ppos[2];
 				break;
 		}		
 	}
@@ -115,31 +183,58 @@ int kudu_bones_edit_unanchor(KuduSelectionList *selection_list, int bone_mode)
 	}
 
 	KuduBone *bone;
+	KuduJoint *joint;
+	int pose;
+
+	/* Are we in editor or animator mode ? */
+	/* If in animator mode set: pose = TRUE this is so that the correct quaternions get adjusted */
+	if (program.mode == PROGRAM_MODE_EDIT) pose = FALSE;
+	else if (program.mode == PROGRAM_MODE_ANIMATION) pose = TRUE;
 
 	if (!kudu_selection_list_for_each_do(selection_list)) return TRUE;
 
 	while ((bone = (KuduBone*)kudu_selection_list_next_do()) != NULL) {
 		switch (bone_mode) {
-			case BONE_MODE_H_ANGLE:
-				bone->hAngle = bone->temp;
+			case BONE_MODE_ROT_LX:
+				/*bone->laxis_rot[0] = bone->temp;*/
+				kudu_bone_apply_rotation(bone, -bone->temp, 0, pose);
 				break;
-			case BONE_MODE_V_ANGLE:
-				bone->vAngle = bone->temp;
+			case BONE_MODE_ROT_LY:
+				/*bone->laxis_rot[1] = bone->temp;*/
+				kudu_bone_apply_rotation(bone, -bone->temp, 1, pose);
 				break;
-			case BONE_MODE_R_ANGLE:
-				bone->rAngle = bone->temp;
+			case BONE_MODE_ROT_LZ:
+				/*bone->laxis_rot[2] = bone->temp;*/
+				kudu_bone_apply_rotation(bone, -bone->temp, 2, pose);
+				break;
+			case BONE_MODE_ROT_GX:
+				kudu_bone_apply_rotation(bone, -bone->temp, 3, pose);
+				break;
+			case BONE_MODE_ROT_GY:
+				kudu_bone_apply_rotation(bone, -bone->temp, 4, pose);
+				break;
+			case BONE_MODE_ROT_GZ:
+				kudu_bone_apply_rotation(bone, -bone->temp, 5, pose);
+			case BONE_MODE_ROTATE:
+				bone->rotation = bone->temp;
 				break;
 			case BONE_MODE_STRETCH:
 				bone->length = bone->temp;
 				break;
 			case BONE_MODE_MOVEX:
-				bone->posX = bone->temp;
+				joint = bone->s_joint;
+				if (!pose) joint->pos[0] = bone->temp;
+				else joint->ppos[0] = bone->temp;
 				break;
 			case BONE_MODE_MOVEY:
-				bone->posY = bone->temp;
+				joint = bone->s_joint;
+				if (!pose) joint->pos[1] = bone->temp;
+				else joint->ppos[1] = bone->temp;
 				break;
 			case BONE_MODE_MOVEZ:
-				bone->posZ = bone->temp;
+				joint = bone->s_joint;
+				if (!pose) joint->pos[2] = bone->temp;
+				else joint->ppos[2] = bone->temp;
 				break;
 		}		
 	}
@@ -169,7 +264,7 @@ int kudu_bones_edit_function(KuduSelectionList *selection_list, BE_Function func
 	while ((current_bone = (KuduBone*)kudu_selection_list_next_do()) != NULL) {
 		switch (func) {
 			case ADD_CHILD:
-				new_bone = kudu_bone_add_child(object, current_bone);
+				new_bone = kudu_bone_add_child(current_bone);
 				if (select_new) {
 					new_bone->selected = TRUE;
 					kudu_selection_list_add_item(temp_list, new_bone);
@@ -182,7 +277,7 @@ int kudu_bones_edit_function(KuduSelectionList *selection_list, BE_Function func
 
 			case ADD_PARENT:
 				if (current_bone->id != BONE_ROOT) {
-					new_bone = kudu_bone_add_parent(object, current_bone);
+					new_bone = kudu_bone_add_parent(current_bone);
 					if (select_new) {
 						new_bone->selected = TRUE;
 						kudu_selection_list_add_item(temp_list, new_bone);
@@ -205,9 +300,6 @@ int kudu_bones_edit_function(KuduSelectionList *selection_list, BE_Function func
 				if (current_bone->parent == NULL) {
 					if (current_bone->first_child != NULL) new_bone = current_bone->first_child;
 					if ((new_bone != NULL) && (new_bone->previous_sibling == NULL) && (new_bone->next_sibling == NULL)) {
-						new_bone->hAngle = current_bone->hAngle;
-						new_bone->vAngle = current_bone->vAngle;
-						new_bone->rAngle = current_bone->rAngle;
 					}
 				}
 				kudu_bone_destroy(current_bone);

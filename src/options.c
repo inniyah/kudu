@@ -26,8 +26,13 @@ static KuduOptionItem *option_list = NULL;
 int kudu_options_init(void)
 {
 	if (option_list != NULL) return FALSE;
+	int a;
 
 	option_list = (KuduOptionItem*)malloc((sizeof(KuduOptionItem) * KO_OPTIONS_COUNT));
+
+	for (a = 0; a < KO_OPTIONS_COUNT; a++) {
+		option_list[a].opt_size = 0;
+	}
 
 	return TRUE;
 }
@@ -35,6 +40,11 @@ int kudu_options_init(void)
 int kudu_options_finish(void)
 {
 	if (option_list == NULL) return FALSE;
+
+	/* Dump gtk accel map if KO_USER_ACCEL_KEYS option is enabled */
+	if (kudu_options_enabled(KO_USER_ACCEL_KEYS)) {
+		kudu_options_save_accel_map();
+	}
 
 	/* First save all current options in the user config file */
 	const char *user_data = kudu_options_get_string(KO_DIR_USER_DATA);
@@ -138,7 +148,6 @@ int kudu_options_set_int(KuduOption option, int num, int *i)
 int kudu_options_set_int_no(KuduOption option, int num, int i)
 {
 	if (option_list == NULL) return FALSE;
-
 	KuduOptionItem *opt = &option_list[option];
 	int *si;
 
@@ -521,7 +530,8 @@ int kudu_options_set_defaults(void)
 	float tempf[18];
 
 	/* Determine current user home path */
-	home = (char*)kudu_util_correct_path(getenv("HOME"));
+	/*home = (char*)kudu_util_correct_path(getenv("HOME"));*/
+	home = (char*)kudu_util_correct_path((char*)g_get_home_dir());
 	kudu_options_set_string(KO_DIR_USER_HOME, home);
 	free(home);
 
@@ -534,6 +544,9 @@ int kudu_options_set_defaults(void)
 	kudu_options_set(KO_WINDOW_SIZE, KO_TYPE_INT, 2, 320, 240);
 
 	kudu_options_enable(KO_WINDOW_MAXED);
+	kudu_options_enable(KO_USER_ACCEL_KEYS);
+
+	kudu_options_enable(KO_SHOW_SPLASH);
 
 	kudu_options_set(KO_BONES_VISIBLE, KO_TYPE_INT, 8, 1, 0, 1, 0, 1, 1, 0, 0);
 
@@ -559,6 +572,10 @@ int kudu_options_set_defaults(void)
 
 	kudu_options_set(KO_BONES_COLOUR_CHILDREN, KO_TYPE_FLOAT, 4, 1.0, 1.0, 1.0, 1.0);
 
+	kudu_options_set(KO_JOINTS_COLOUR_DEFAULT, KO_TYPE_FLOAT, 4, 1.0, 0.0, 1.0, 1.0);
+
+	kudu_options_set(KO_JOINTS_COLOUR_SELECTED, KO_TYPE_FLOAT, 4, 1.0, 0.0, 0.0, 1.0);
+
 	kudu_options_set(KO_AXES_COLOUR, KO_TYPE_FLOAT, 18, 0.6, 0.0, 0.0,  0.0, 0.6, 0.0,  0.0, 0.0, 0.6,
 							    0.6, 0.6, 0.6,  0.6, 0.6, 0.6,  0.6, 0.6, 0.6);
 
@@ -573,6 +590,7 @@ int kudu_options_set_defaults(void)
 
 
 	kudu_options_configure_user_dirs();
+
 
 	const char *user_data = kudu_options_get_string(KO_DIR_USER_DATA);
 	char *user_config = (char*)malloc(strlen(user_data)+10);
@@ -778,4 +796,81 @@ int kudu_options_load_from_file(char *filename)
 
 	return TRUE;
 }
+
+int kudu_options_save_accel_map(void)
+{
+	if (option_list == NULL) return FALSE;
+	if (!kudu_options_enabled(KO_USER_ACCEL_KEYS)) return FALSE;
+
+	const char *user_data = kudu_options_get_string(KO_DIR_USER_DATA);
+	char *user_keys = (char*)malloc(strlen(user_data)+10);
+	if (user_keys != NULL) {
+		sprintf(user_keys, "%skeys.conf\0", user_data);
+		gtk_accel_map_save(user_keys);
+		free(user_keys);
+	}
+
+	return TRUE;
+}
+
+int kudu_options_load_accel_map(void)
+{
+	if (option_list == NULL) return FALSE;
+	if (!kudu_options_enabled(KO_USER_ACCEL_KEYS)) return FALSE;
+
+	const char *user_data = kudu_options_get_string(KO_DIR_USER_DATA);
+	char *user_keys = (char*)malloc(strlen(user_data)+10);
+	if (user_keys != NULL) {
+		sprintf(user_keys, "%skeys.conf\0", user_data);
+		gtk_accel_map_load(user_keys);
+		free(user_keys);
+	}
+
+	return TRUE;
+}
+
+int kudu_options_parse(int argc, char **argv)
+{
+	struct option options[] = {
+		{"help", 0, 0, 0},
+		{"version", 0, 0, 0},
+		{"image-formats", 0, 0, 0},
+		{"disable-splash", 0, 0, 0},
+		{0, 0, 0, 0}
+	};
+	int optindex;
+	int c;
+
+	while ((c = getopt_long(argc, argv, "", options, &optindex)) >= 0) {
+		switch (optindex) {
+			case 0:
+				printf("Kudu Animator command line options:\n\n");
+				printf("--help			Display this message and exit\n");
+				printf("--version		Display Kudu version and exit\n");
+				printf("--image-formats		Print out a list of all supported image formats and exit\n");
+				printf("--disable-splash	Disables the startup splash screen\n");
+				printf("\n");
+				exit(0);
+				break;
+			case 1:
+				kudu_about_printout();
+				exit(0);
+				break;
+			case 2:
+				kudu_image_print_formats();
+				exit(0);
+				break;
+			case 3:
+				kudu_options_disable(KO_SHOW_SPLASH);
+				break;
+			default:
+				break;
+		}
+	}
+
+	return TRUE;
+}
+
+
+
 

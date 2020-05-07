@@ -422,10 +422,10 @@ int kudu_frame_list_set_frame_operation(KuduFrameList *frame_list, KuduObject *o
 		case OPERATION_BONE_SET:
 			bone = (KuduBone*)item;
 			frame->operation = OPERATION_BONE_SET;
-			frame->fdata[0] = bone->hAngle;
+			/*frame->fdata[0] = bone->hAngle;
 			frame->fdata[1] = bone->vAngle;
 			frame->fdata[2] = bone->rAngle;
-			frame->fdata[3] = bone->length;
+			frame->fdata[3] = bone->length;*/
 			break;
 		case OPERATION_VERTEX_SET:
 			vertex = (KuduVertex*)item;
@@ -481,10 +481,10 @@ int kudu_frame_perform_operation(KuduItemFrame *item_frame, KuduFrame *frame)
 			break;
 		case OPERATION_BONE_SET:
 			bone = (KuduBone*)item_frame->item;
-			bone->hAngle = frame->fdata[0];
+			/*bone->hAngle = frame->fdata[0];
 			bone->vAngle = frame->fdata[1];
 			bone->rAngle = frame->fdata[2];
-			bone->length = frame->fdata[3];
+			bone->length = frame->fdata[3];*/
 			kudu_bone_magic_touch(bone);
 			break;
 		case OPERATION_VERTEX_SET:
@@ -535,13 +535,13 @@ int kudu_frame_perform_average_operation(KuduItemFrame *item_frame, KuduFrame *b
 				}
 			}
 
-			bone->hAngle = before->fdata[0] + tmp[0];
+			/*bone->hAngle = before->fdata[0] + tmp[0];
 			bone->vAngle = before->fdata[1] + tmp[1];
 			bone->rAngle = before->fdata[2] + tmp[2];
 			bone->length = before->fdata[3] + tmp[3];
 			kudu_math_degrees_clamp(&bone->hAngle);
 			kudu_math_degrees_clamp(&bone->vAngle);
-			kudu_math_degrees_clamp(&bone->rAngle);
+			kudu_math_degrees_clamp(&bone->rAngle);*/
 			kudu_bone_magic_touch(bone);
 			break;
 		case OPERATION_VERTEX_SET:

@@ -53,6 +53,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <getopt.h>
 
 #include "kerror.h"
 
@@ -70,7 +71,25 @@
 #define MAXINT 2147483647
 #endif
 
-#define RADDEG 0.017453292
+#ifndef M_PI
+#define M_PI (3.1415926536)
+#endif
+
+/* Covert degrees to radians */
+#define RADDEG (M_PI/180.0)
+
+/* Convert half angle in degrees to radians (needed for quaternion rotations) */
+#define HRADDEG (M_PI/360.0)
+
+/* Setup version string */
+#ifndef CVS_VERSION
+#define KUDU_VERSION_STRING PACKAGE_STRING
+#else
+#define KUDU_VERSION_STRING PACKAGE_STRING" (CVS version)"
+#endif
+
+/* Year date to be display in version / copyright messages etc.. (string) */
+#define KUDU_VERSION_DATE_Y "2006"
 
 #define MOUSE_LEFT_BUTTON 1
 #define MOUSE_MIDDLE_BUTTON 2
@@ -114,6 +133,8 @@
 #define K_RENDER_SHOW_AXES 1048576
 #define K_RENDER_SHOW_SELECTED_AXES 2097152
 #define K_RENDER_TRANSLATE_POS 4194304
+#define K_RENDER_TEXTURES 8388608
+#define K_RENDER_JOINTS 16777216
 
 #define K_SELECT_PICK 1
 #define K_SELECT_RECTANGLE 2
@@ -159,14 +180,11 @@
 #define CAMERA_MODE_SLIDE 4
 #define CAMERA_MODE_RESET 5
 
-#define BONE_MODE_FIXED 0
-#define BONE_MODE_H_ANGLE 1
-#define BONE_MODE_V_ANGLE 2
-#define BONE_MODE_R_ANGLE 3
-#define BONE_MODE_STRETCH 4
-#define BONE_MODE_MOVEX 5
-#define BONE_MODE_MOVEY 6
-#define BONE_MODE_MOVEZ 7
+
+#define JOINT_MODE_FIXED 0
+#define JOINT_MODE_MOVEX 1
+#define JOINT_MODE_MOVEY 2
+#define JOINT_MODE_MOVEZ 3
 
 #define OBJECT_MODE_FIXED 0
 #define OBJECT_MODE_MOVEX 1
@@ -218,10 +236,17 @@
 
 /* Macros */
 
+#ifndef RETURN_NONE
 #define RETURN_NONE return (Py_INCREF(Py_None), Py_None);
-#define RETURN_TRUE return (Py_INCREF(Py_True), Py_True);
-#define RETURN_FALSE return (Py_INCREF(Py_False), Py_False);
+#endif
 
+#ifndef RETURN_TRUE
+#define RETURN_TRUE return (Py_INCREF(Py_True), Py_True);
+#endif
+
+#ifndef RETURN_FALSE
+#define RETURN_FALSE return (Py_INCREF(Py_False), Py_False);
+#endif
 
 /* Const declarations */
 
@@ -261,6 +286,7 @@ typedef enum {
 	SELECT_SHAPES,
 	E_MESH,
 	SELECT_BONES,
+	SELECT_JOINTS,
 	SELECT_BONES_PARENTS,
 	SELECT_BONES_FIRST_CHILD,
 	SELECT_BONES_NEXT_SIBLING,
@@ -274,6 +300,20 @@ typedef enum {
 	KS_EMBED,
 } K_ScriptType;
 
+typedef enum {
+	BONE_MODE_FIXED,
+	BONE_MODE_ROT_LX,
+	BONE_MODE_ROT_LY,
+	BONE_MODE_ROT_LZ,
+	BONE_MODE_ROT_GX,
+	BONE_MODE_ROT_GY,
+	BONE_MODE_ROT_GZ,
+	BONE_MODE_ROTATE,
+	BONE_MODE_STRETCH,
+	BONE_MODE_MOVEX,
+	BONE_MODE_MOVEY,
+	BONE_MODE_MOVEZ,
+} K_BONE_MODE;
 
 /* Structure Declarations */
 
@@ -323,6 +363,7 @@ typedef struct _KuduMaterial {
 	float specular[4];
 	float emission[4];
 	float shininess;
+	struct _KuduTexture *texture;
 	struct _KuduMaterial *next_material;
 	struct _KuduMaterial *previous_material;
 } KuduMaterial;
@@ -343,6 +384,7 @@ typedef struct _KuduTexture {
 	unsigned int height;
 	struct _KuduTexture *next_texture;
 	struct _KuduTexture *previous_texture;
+	KuduImage *image;
 } KuduTexture;
 
 /*typedef struct {
@@ -358,27 +400,57 @@ typedef struct _KuduTexture {
 	unsigned char *rgbcols;
 } K_TERRAIN;*/
 
+typedef struct _KuduJoint {
+	int id;
+	int num_bones;
+	float pos[3];	/* Position */
+	float ppos[3];	/* Position offset for pose mode */
+	float temp;
+	float zlen;
+	unsigned char selected;
+	struct _KuduObject *object;
+	struct _KuduBone *bone;
+	struct _KuduJoint *next_joint;
+	struct _KuduJoint *previous_joint;
+} KuduJoint;
+
+/*typedef struct _KuduJointList {
+	int num_joints;
+	int num_avail;
+	KuduJoint *joint;
+} KuduJointList;*/
+
 typedef struct _KuduBone {
 	int id;
 	char name[64];
-	float hAngle;
-	float vAngle;
-	float rAngle;
-	float length;
-	float posX;
-	float posY;
-	float posZ;
-	float lineX;
-	float lineY;
-	float lineZ;
+	float axis[3];
+	float rotation;		/* Bone rotation */
+	float protation;	/* Bone rotation offset in pose mode*/
+	float length;		/* Bone length */
+	float plength;		/* Bone length offset in pose mode */
 	float temp;
-	float matrix[4][4];
+	KuduJoint *s_joint;	/* Base Joint */
+	KuduJoint *e_joint;	/* End Joint */
+	float lquat[4];		/* Local Rotation quaternion - stores rotations about the local axes */
+	float gquat[4];		/* Global Rotation quaternion - stores rotations about the global axes */
+	float quat[4];		/* Final quaternion - the absoloute position of the bone */
+	float matrix[16];	/* Final matrix */
+	float lmatrix[16];	/* Local matrix - stores rotations about the local axis */
+	float gmatrix[16];	/* Global matrix - stores rotations about the global axis */
+	/* Posing */
+	float lpquat[4];	/* Local rotation pose quaternion */
+	float gpquat[4];	/* Global rotation pose quaternion */
+	float pquat[4];		/* Pose quaternion - effectively the rotation of the bone in pose mode */
+	float pmatrix[16];	/* Pose matrix - position in pose mode */
 	int magic_touch;
 	unsigned char selected;
+	int num_verts;		/* Number of vertices attached to this bone */
+	struct _KuduVertex **vertex;	/* List of pointers to attached vertices */
 	struct _KuduBone *parent;
 	struct _KuduBone *first_child;
 	struct _KuduBone *next_sibling;
 	struct _KuduBone *previous_sibling;
+	struct _KuduObject *object;
 } KuduBone;
 
 typedef struct _KuduVertex {
@@ -393,7 +465,9 @@ typedef struct _KuduVertex {
 	int magic_touch;
 	unsigned char magic_normal;
 	unsigned char selected;
-	KuduBone *bone;
+	int num_bones;
+	float *influence;
+	KuduBone **bone;
 	struct _KuduVertex *previous_vertex;
 	struct _KuduVertex *next_vertex;
 	struct _KuduEdge *edge;
@@ -412,8 +486,8 @@ typedef struct _KuduFace {
 typedef struct _KuduEdge {
 	int id;
 	unsigned char hard;
-	float s_uv_coord[2];
-	float e_uv_coord[2];
+	float s_uv[2];
+	float e_uv[2];
 	unsigned char selected;
 
 	KuduVertex *start_vertex;
@@ -446,8 +520,10 @@ typedef struct _KuduObject {
 	char *filename;
 	int filename_length;
 	float position[3];
+	int next_joint_id;
 	int next_bone_id;
 	int next_material_id;
+	int next_texture_id;
 	int next_vertex_id;
 	int next_edge_id;
 	int next_face_id;
@@ -458,9 +534,11 @@ typedef struct _KuduObject {
 	int author_length;
 	int email_length;
 	int url_length;
+	KuduJoint *joint;
 	KuduBone *bone;
 	KuduMaterial *material;
 	KuduShape *skin;
+	KuduTexture *texture;
 	struct _KuduObject *next_object;
 	struct _KuduObject *previous_object;
 } KuduObject;
@@ -526,8 +604,10 @@ typedef struct {
 	int sub_mode;
 	int mode_opt_no;
 	int selection_mode;
+	int uip_mode;
 	int bone_mode;
 	int edit_mode;
+	int joint_mode;
 	int objectMode;
 	int currentFrame;
 	int grid_list;

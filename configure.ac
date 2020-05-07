@@ -1,12 +1,15 @@
 AC_PREREQ(2.59)
 
-AC_INIT([kudu],[0.0.1],[redarrow@users.sourceforge.net])
+AC_INIT([kudu],[0.1.0],[redarrow@users.sourceforge.net])
+AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/globals.h])
 AC_CONFIG_HEADER([src/config.h])
 
-AC_LANG(C)
+if test -e .cvsversion; then
+	AC_DEFINE([CVS_VERSION], [1], [Define to 1 if this is a CVS version of Kudu])
+fi
 
-AM_INIT_AUTOMAKE
+AC_LANG(C)
 
 AC_PROG_CC
 
@@ -27,6 +30,7 @@ AC_PYTHON_DEVEL
 
 PKG_CHECK_MODULES(GSTUFF, gtk+-2.0 >= 2.6.0)
 AM_PATH_GTKGLEXT_1_0([1.0.6], [], [AC_MSG_ERROR([Error GtkGLExt not found! Cannot continue.])])
+AC_CHECK_LIB([GL], [glWindowPos2i], [AC_DEFINE([HAVE_GLWINDOWPOS], [1], [Define to 1 if we have the glWindowPos2i function])])
 
 # Check for headers
 AC_PATH_X

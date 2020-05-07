@@ -59,35 +59,38 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am__kudu_SOURCES_DIST = kudu.c kudu.h globals.h camera.c camera.h \
-	bones.c bones.h graphics.c graphics.h materials.c materials.h \
-	vertices.c vertices.h wingedge.c wingedge.h mathematics.c \
-	mathematics.h utils.c utils.h image.c image.h options.c \
-	options.h stack.c stack.h selection.c selection.h rwxobject.c \
-	rwxobject.h gui.c gui.h gui_vertex.c gui_vertex.h gui_bone.c \
-	gui_bone.h menus.c menus.h texture.c texture.h tga_image.c \
-	tga_image.h rgb_image.c rgb_image.h object.c object.h kerror.c \
-	kerror.h kudu_menus.c kudu_menus.h font.c font.h defaultfont.h \
+	joints.c joints.h bones.c bones.h graphics.c graphics.h \
+	materials.c materials.h vertices.c vertices.h wingedge.c \
+	wingedge.h mathematics.c mathematics.h utils.c utils.h image.c \
+	image.h options.c options.h stack.c stack.h selection.c \
+	selection.h rwxobject.c rwxobject.h objobject.c objobject.h \
+	gui.c gui.h gui_vertex.c gui_vertex.h gui_bone.c gui_bone.h \
+	menus.c menus.h texture.c texture.h tga_image.c tga_image.h \
+	rgb_image.c rgb_image.h object.c object.h kerror.c kerror.h \
+	kudu_menus.c kudu_menus.h font.c font.h defaultfont.h \
 	bones_edit.c bones_edit.h gui_materials.c gui_materials.h \
 	about.c about.h skin_edit.c skin_edit.h gui_object.c \
 	gui_object.h frames.c frames.h sequence.c sequence.h toolbar.c \
-	toolbar.h scripts.c scripts.h gui_scripts.c gui_scripts.h \
+	toolbar.h joints_edit.c joints_edit.h uiplugin.c uiplugin.h \
+	scripts.c scripts.h gui_scripts.c gui_scripts.h \
 	objectsmodule.c objectsmodule.h guimodule.c guimodule.h
 @SUPPORT_PYTHON_TRUE@am__objects_1 = scripts.$(OBJEXT) \
 @SUPPORT_PYTHON_TRUE@	gui_scripts.$(OBJEXT) \
 @SUPPORT_PYTHON_TRUE@	objectsmodule.$(OBJEXT) \
 @SUPPORT_PYTHON_TRUE@	guimodule.$(OBJEXT)
-am_kudu_OBJECTS = kudu.$(OBJEXT) camera.$(OBJEXT) bones.$(OBJEXT) \
-	graphics.$(OBJEXT) materials.$(OBJEXT) vertices.$(OBJEXT) \
-	wingedge.$(OBJEXT) mathematics.$(OBJEXT) utils.$(OBJEXT) \
-	image.$(OBJEXT) options.$(OBJEXT) stack.$(OBJEXT) \
-	selection.$(OBJEXT) rwxobject.$(OBJEXT) gui.$(OBJEXT) \
-	gui_vertex.$(OBJEXT) gui_bone.$(OBJEXT) menus.$(OBJEXT) \
-	texture.$(OBJEXT) tga_image.$(OBJEXT) rgb_image.$(OBJEXT) \
-	object.$(OBJEXT) kerror.$(OBJEXT) kudu_menus.$(OBJEXT) \
-	font.$(OBJEXT) bones_edit.$(OBJEXT) gui_materials.$(OBJEXT) \
-	about.$(OBJEXT) skin_edit.$(OBJEXT) gui_object.$(OBJEXT) \
-	frames.$(OBJEXT) sequence.$(OBJEXT) toolbar.$(OBJEXT) \
-	$(am__objects_1)
+am_kudu_OBJECTS = kudu.$(OBJEXT) camera.$(OBJEXT) joints.$(OBJEXT) \
+	bones.$(OBJEXT) graphics.$(OBJEXT) materials.$(OBJEXT) \
+	vertices.$(OBJEXT) wingedge.$(OBJEXT) mathematics.$(OBJEXT) \
+	utils.$(OBJEXT) image.$(OBJEXT) options.$(OBJEXT) \
+	stack.$(OBJEXT) selection.$(OBJEXT) rwxobject.$(OBJEXT) \
+	objobject.$(OBJEXT) gui.$(OBJEXT) gui_vertex.$(OBJEXT) \
+	gui_bone.$(OBJEXT) menus.$(OBJEXT) texture.$(OBJEXT) \
+	tga_image.$(OBJEXT) rgb_image.$(OBJEXT) object.$(OBJEXT) \
+	kerror.$(OBJEXT) kudu_menus.$(OBJEXT) font.$(OBJEXT) \
+	bones_edit.$(OBJEXT) gui_materials.$(OBJEXT) about.$(OBJEXT) \
+	skin_edit.$(OBJEXT) gui_object.$(OBJEXT) frames.$(OBJEXT) \
+	sequence.$(OBJEXT) toolbar.$(OBJEXT) joints_edit.$(OBJEXT) \
+	uiplugin.$(OBJEXT) $(am__objects_1)
 kudu_OBJECTS = $(am_kudu_OBJECTS)
 kudu_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I.
@@ -194,19 +197,21 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-kudu_SOURCES = kudu.c kudu.h globals.h camera.c camera.h bones.c \
-	bones.h graphics.c graphics.h materials.c materials.h \
-	vertices.c vertices.h wingedge.c wingedge.h mathematics.c \
-	mathematics.h utils.c utils.h image.c image.h options.c \
-	options.h stack.c stack.h selection.c selection.h rwxobject.c \
-	rwxobject.h gui.c gui.h gui_vertex.c gui_vertex.h gui_bone.c \
-	gui_bone.h menus.c menus.h texture.c texture.h tga_image.c \
-	tga_image.h rgb_image.c rgb_image.h object.c object.h kerror.c \
-	kerror.h kudu_menus.c kudu_menus.h font.c font.h defaultfont.h \
+kudu_SOURCES = kudu.c kudu.h globals.h camera.c camera.h joints.c \
+	joints.h bones.c bones.h graphics.c graphics.h materials.c \
+	materials.h vertices.c vertices.h wingedge.c wingedge.h \
+	mathematics.c mathematics.h utils.c utils.h image.c image.h \
+	options.c options.h stack.c stack.h selection.c selection.h \
+	rwxobject.c rwxobject.h objobject.c objobject.h gui.c gui.h \
+	gui_vertex.c gui_vertex.h gui_bone.c gui_bone.h menus.c \
+	menus.h texture.c texture.h tga_image.c tga_image.h \
+	rgb_image.c rgb_image.h object.c object.h kerror.c kerror.h \
+	kudu_menus.c kudu_menus.h font.c font.h defaultfont.h \
 	bones_edit.c bones_edit.h gui_materials.c gui_materials.h \
 	about.c about.h skin_edit.c skin_edit.h gui_object.c \
 	gui_object.h frames.c frames.h sequence.c sequence.h toolbar.c \
-	toolbar.h $(am__append_1)
+	toolbar.h joints_edit.c joints_edit.h uiplugin.c uiplugin.h \
+	$(am__append_1)
 AM_CPPFLAGS = -DKUDU_DATADIR=\"$(pkgdatadir)\"
 INCLUDES = @GSTUFF_CFLAGS@ @GTKGLEXT_CFLAGS@ $(am__append_3)
 all: config.h
@@ -308,6 +313,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gui_vertex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/guimodule.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/image.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joints.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/joints_edit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kerror.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kudu.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/kudu_menus.Po@am__quote@
@@ -316,6 +323,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/menus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/object.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/objectsmodule.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/objobject.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/options.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rgb_image.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rwxobject.Po@am__quote@
@@ -327,6 +335,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/texture.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tga_image.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/toolbar.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uiplugin.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vertices.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wingedge.Po@am__quote@

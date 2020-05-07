@@ -27,6 +27,12 @@ static GtkAccelGroup *k_accel_group = NULL;
 static GCallback k_action;
 static char *k_path = NULL;
 static GSList *radio_group = NULL;
+static gulong last_signal_id = 0;
+
+gulong kudu_toolbar_last_signal_id(void)
+{
+	return last_signal_id;
+}
 
 int kudu_toolbar_set_path(char *path)
 {
@@ -105,7 +111,7 @@ GtkToolItem *kudu_toolbar_add_radio_button(unsigned int action, char *label, cha
 	int position;
 
 	tool_item = gtk_radio_tool_button_new(radio_group);
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)action);
+	last_signal_id = g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)action);
 
 	if (label != NULL) gtk_tool_button_set_label(GTK_TOOL_BUTTON(tool_item), label);
 	if (image_f != NULL) {
@@ -128,7 +134,7 @@ GtkToolItem *kudu_toolbar_add_stock_item(unsigned int action, char *label, char 
 	GtkToolItem *tool_item;
 
 	tool_item = gtk_tool_button_new_from_stock(stock);
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)action);
+	last_signal_id = g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(k_action), (gpointer)action);
 
 	gtk_tool_button_set_label(GTK_TOOL_BUTTON(tool_item), label);
 
@@ -181,6 +187,7 @@ int kudu_toolbar_store_item(K_MainToolbar item, GtkToolItem *tool_item)
 	if ((k_toolbar == NULL) || (item >= KT_NUM_ITEMS) || (tool_item == NULL)) return FALSE;
 
 	k_toolbar[item].tool_item = tool_item;
+	k_toolbar[item].signal = kudu_toolbar_last_signal_id();
 
 	return TRUE;
 }
@@ -210,6 +217,37 @@ int kudu_toolbar_item_enable(K_MainToolbar item)
 	return TRUE;
 }
 
+int kudu_toolbar_item_activate(K_MainToolbar item)
+{
+	if ((k_toolbar == NULL) || (item >= KT_NUM_ITEMS)) return FALSE;
+
+	gtk_widget_activate(GTK_WIDGET(k_toolbar[item].tool_item));
+
+	return TRUE;
+}
+
+int kudu_toolbar_item_activate_no_call(K_MainToolbar item)
+{
+	if ((k_toolbar == NULL) || (item >= KT_NUM_ITEMS)) return FALSE;
+
+	g_signal_handler_block(k_toolbar[item].tool_item, k_toolbar[item].signal);
+	gtk_widget_activate(GTK_WIDGET(k_toolbar[item].tool_item));
+	g_signal_handler_unblock(k_toolbar[item].tool_item, k_toolbar[item].signal);
+
+	return TRUE;
+}
+
+int kudu_toolbar_toggle_item_set_active_no_call(K_MainToolbar item, int state)
+{
+	if ((k_toolbar == NULL) || (item >= KT_NUM_ITEMS)) return FALSE;
+
+	g_signal_handler_block(k_toolbar[item].tool_item, k_toolbar[item].signal);
+	gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(k_toolbar[item].tool_item), state);
+	g_signal_handler_unblock(k_toolbar[item].tool_item, k_toolbar[item].signal);
+
+	return TRUE;
+}
+
 
 #define KT_RADIO(item, label, icon, accel) (kudu_toolbar_store_item(item, kudu_toolbar_add_radio_button(item, label, icon, accel)))
 
@@ -232,6 +270,7 @@ GtkWidget *kudu_main_toolbar_build(GtkAccelGroup *accel_group, GCallback action)
 	kudu_toolbar_new_radio_group();
 	KT_RADIO(KT_SELECT_OBJECTS, "Objects", KUDU_IMAGES_DIR"object.png", "<ctrl><shift>O");
 	KT_RADIO(KT_SELECT_BONES, "Bones", KUDU_IMAGES_DIR"bone.png", "<ctrl><shift>B");
+	KT_RADIO(KT_SELECT_JOINTS, "Joints", KUDU_IMAGES_DIR"joint.png", "<ctrl><shift>J");
 
 	kudu_toolbar_add_seperator(TRUE, FALSE);
 

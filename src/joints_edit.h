@@ -19,18 +19,16 @@
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  */
 /*                                                                            */
 /******************************************************************************/
-#ifndef ABOUT_H_INCLUDED
-#define ABOUT_H_INCLUDED
+#ifndef JOINTS_EDIT_H_INCLUDED
+#define JOINTS_EDIT_H_INCLUDED
 
 #include "globals.h"
+#include "mathematics.h"
+#include "bones.h"
 
+int kudu_joints_edit_selection(KuduSelectionList*, float, float, int);
+int kudu_joints_edit_anchor(KuduSelectionList*, int);
+int kudu_joints_edit_unanchor(KuduSelectionList*, int);
 
-int kudu_about_printout(void);
-GtkWidget *kudu_about_splash_window(void);
-void kudu_about_splash_display(void);
-void kudu_about_splash_set_parent(GtkWindow*);
-gboolean kudu_about_splash_close(void);
-void kudu_about_splash_message(char*);
-
-#endif /* ABOUT_H_INCLUDED */
+#endif /* JOINTS_EDIT_H_INCLUDED */
 

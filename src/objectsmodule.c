@@ -176,9 +176,11 @@ static PyObject *shape_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 /************************************/
 /*   o_face methods declarations    */
 /************************************/
+static PyObject *face_id(o_face*);
 static PyObject *face_edge(o_face*);
 
 static PyMethodDef o_face_methods[] = {
+	{"id", (PyCFunction)face_id, METH_NOARGS, "Return the face's id"},
 	{"edge", (PyCFunction)face_edge, METH_NOARGS, "Return the incident edge for this face"},
 	{NULL, NULL, 0, NULL}
 };
@@ -193,16 +195,34 @@ static PyTypeObject o_faceType = {
 /************************************/
 /*   o_edge methods declarations    */
 /************************************/
+static PyObject *edge_id(o_edge*);
 static PyObject *edge_left_successor(o_edge*);
 static PyObject *edge_left_predecessor(o_edge*);
 static PyObject *edge_right_successor(o_edge*);
 static PyObject *edge_right_predecessor(o_edge*);
+static PyObject *edge_set_left_successor(o_edge*, PyObject*);
+static PyObject *edge_set_left_predecessor(o_edge*, PyObject*);
+static PyObject *edge_set_right_successor(o_edge*, PyObject*);
+static PyObject *edge_set_right_predecessor(o_edge*, PyObject*);
+static PyObject *edge_set_start_vertex(o_edge*, PyObject*);
+static PyObject *edge_set_end_vertex(o_edge*, PyObject*);
+static PyObject *edge_set_left_face(o_edge*, PyObject*);
+static PyObject *edge_set_right_face(o_edge*, PyObject*);
 
 static PyMethodDef o_edge_methods[] = {
+	{"id", (PyCFunction)edge_id, METH_NOARGS, "Return the edge's id"},
 	{"left_succ", (PyCFunction)edge_left_successor, METH_NOARGS, "Return the left successor"},
 	{"left_pred", (PyCFunction)edge_left_predecessor, METH_NOARGS, "Return the left predecessor"},
 	{"right_succ", (PyCFunction)edge_right_successor, METH_NOARGS, "Return the right successor"},
 	{"right_pred", (PyCFunction)edge_right_predecessor, METH_NOARGS, "Return the right predeccessor"},
+	{"set_left_succ", (PyCFunction)edge_set_left_successor, METH_VARARGS, "Set the left successor"},
+	{"set_left_pred", (PyCFunction)edge_set_left_predecessor, METH_VARARGS, "Set the left predecessor"},
+	{"set_right_succ", (PyCFunction)edge_set_right_successor, METH_VARARGS, "Set the right successor"},
+	{"set_right_pred", (PyCFunction)edge_set_right_predecessor, METH_VARARGS, "Set the right predecessor"},
+	{"set_start_vertex", (PyCFunction)edge_set_start_vertex, METH_VARARGS, "Set the start vertex"},
+	{"set_end_vertex", (PyCFunction)edge_set_end_vertex, METH_VARARGS, "Set the end vertex"},
+	{"set_left_face", (PyCFunction)edge_set_left_face, METH_VARARGS, "Set the left face"},
+	{"set_right_face", (PyCFunction)edge_set_right_face, METH_VARARGS, "Set the right face"},
 	{NULL, NULL, 0, NULL}
 };
 
@@ -256,8 +276,16 @@ static PyTypeObject o_vertexType = {
 /************************************/
 /*  o_shape methods declarations    */
 /************************************/
+static PyObject *shape_id(o_shape*);
+static PyObject *shape_new_vertex(o_shape*, PyObject*, PyObject*);
+static PyObject *shape_new_edge(o_shape*, PyObject*, PyObject*);
+static PyObject *shape_new_face(o_shape*, PyObject*, PyObject*);
 
 static PyMethodDef o_shape_methods[] = {
+	{"id", (PyCFunction)shape_id, METH_NOARGS, "Return the shape's ID"},
+	{"new_vertex", (PyCFunction)shape_new_vertex, METH_NOARGS, "Create a new vertex on this shape"},
+	{"new_edge", (PyCFunction)shape_new_edge, METH_NOARGS, "Create a new edge on this shape"},
+	{"new_face", (PyCFunction)shape_new_face, METH_NOARGS, "Create a new face on this shape"},
 	{NULL, NULL, 0, NULL}
 };
 
@@ -277,6 +305,14 @@ static PyTypeObject o_shapeType = {
 /************************************/
 /*          o_face methods          */
 /************************************/
+static PyObject *face_id(o_face *self)
+{
+	KuduFace *d_face = self->d_face;
+	if (d_face == NULL) return Py_BuildValue("i", -1);
+
+	return Py_BuildValue("i", d_face->id);
+}
+
 static PyObject *face_edge(o_face *self)
 {
 	KuduFace *d_face = self->d_face;
@@ -294,6 +330,14 @@ static PyObject *face_edge(o_face *self)
 /************************************/
 /*         o_edge methods           */
 /************************************/
+static PyObject *edge_id(o_edge *self)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) return Py_BuildValue("i", -1);
+
+	return Py_BuildValue("i", d_edge->id);
+}
+
 static PyObject *edge_left_successor(o_edge *self)
 {
 	KuduEdge *d_edge = self->d_edge;
@@ -346,6 +390,110 @@ static PyObject *edge_right_predecessor(o_edge *self)
 	return (PyObject*)edge;
 }
 
+static PyObject *edge_set_left_successor(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_edge *ls;
+	if (!(PyArg_ParseTuple(args, "O", &ls))) return NULL;
+
+	kudu_edge_wings_set(d_edge, ls->d_edge, NULL, NULL, NULL);
+
+	RETURN_TRUE
+}
+
+static PyObject *edge_set_left_predecessor(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_edge *lp;
+	if (!(PyArg_ParseTuple(args, "O", &lp))) return NULL;
+
+	kudu_edge_wings_set(d_edge, NULL, lp->d_edge, NULL, NULL);
+
+	RETURN_TRUE
+}
+
+static PyObject *edge_set_right_successor(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_edge *rs;
+	if (!(PyArg_ParseTuple(args, "O", &rs))) return NULL;
+
+	kudu_edge_wings_set(d_edge, NULL, NULL, rs->d_edge, NULL);
+
+	RETURN_TRUE
+}
+
+static PyObject *edge_set_right_predecessor(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_edge *rp;
+	if (!(PyArg_ParseTuple(args, "O", &rp))) return NULL;
+
+	kudu_edge_wings_set(d_edge, NULL, NULL, NULL, rp->d_edge);
+
+	RETURN_TRUE
+}
+
+static PyObject *edge_set_start_vertex(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_vertex *sv;
+	if (!(PyArg_ParseTuple(args, "O", &sv))) return NULL;
+
+	kudu_edge_vertices_set(d_edge, sv->d_vertex, NULL);
+
+	RETURN_TRUE
+}
+
+static PyObject *edge_set_end_vertex(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_vertex *ev;
+	if (!(PyArg_ParseTuple(args, "O", &ev))) return NULL;
+
+	kudu_edge_vertices_set(d_edge, NULL, ev->d_vertex);
+
+	RETURN_TRUE
+}
+
+static PyObject *edge_set_left_face(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_face *lf;
+	if (!(PyArg_ParseTuple(args, "O", &lf))) return NULL;
+
+	kudu_edge_faces_set(d_edge, lf->d_face, NULL);
+
+	RETURN_TRUE
+}
+
+static PyObject *edge_set_right_face(o_edge *self, PyObject *args)
+{
+	KuduEdge *d_edge = self->d_edge;
+	if (d_edge == NULL) RETURN_FALSE
+
+	o_face *rf;
+	if (!(PyArg_ParseTuple(args, "O", &rf))) return NULL;
+
+	kudu_edge_faces_set(d_edge, NULL, rf->d_face);
+
+	RETURN_TRUE
+}
+
 
 
 /********************************/
@@ -386,7 +534,7 @@ static PyObject *vertex_set_pos3d(o_vertex *self, PyObject *args)
 
 	if (!(PyArg_ParseTuple(args, "fff", &v[0], &v[1], &v[2]))) return NULL;
 
-	for (a = 0; a < 3; a++) d_vertex->v[a] = v[a];
+	for (a = 0; a < 3; a++) d_vertex->av[a] = v[a];
 
 	RETURN_TRUE
 }
@@ -510,6 +658,63 @@ static PyObject *vertex_edge(o_vertex *self)
 /************************************/
 /*        o_shape methods           */
 /************************************/
+static PyObject *shape_id(o_shape *self)
+{
+	KuduShape *d_shape = self->d_shape;
+	if (d_shape == NULL) return Py_BuildValue("i", -1);
+
+	return Py_BuildValue("i", d_shape->id);
+}
+
+static PyObject *shape_new_vertex(o_shape *self, PyObject *args, PyObject *kwds)
+{
+	KuduShape *d_shape = self->d_shape;
+	KuduObject *d_object = self->d_object;
+	if ((d_shape == NULL) || (d_object == NULL)) RETURN_NONE
+
+	o_vertex *vertex = (o_vertex*)vertex_new(&o_vertexType, NULL, NULL);
+	KuduVertex *d_vertex = kudu_vertex_new(d_object, d_shape->vertex);
+	if (d_shape->vertex == NULL) d_shape->vertex = d_vertex;
+
+	vertex->d_vertex = d_vertex;
+	vertex->d_object = d_object;
+
+	return (PyObject*)vertex;
+}
+
+static PyObject *shape_new_edge(o_shape *self, PyObject *args, PyObject *kwds)
+{
+	KuduShape *d_shape = self->d_shape;
+	KuduObject *d_object = self->d_object;
+	if ((d_shape == NULL) || (d_object == NULL)) RETURN_NONE
+
+	o_edge *edge = (o_edge*)edge_new(&o_edgeType, NULL, NULL);
+	KuduEdge *d_edge = kudu_edge_new(d_object, d_shape->edge);
+	if (d_shape->edge == NULL) d_shape->edge = d_edge;
+
+	edge->d_edge = d_edge;
+	edge->d_object = d_object;
+
+	return (PyObject*)edge;
+}
+
+static PyObject *shape_new_face(o_shape *self, PyObject *args, PyObject *kwds)
+{
+	KuduShape *d_shape = self->d_shape;
+	KuduObject *d_object = self->d_object;
+	if ((d_shape == NULL) || (d_object == NULL)) RETURN_NONE
+
+	o_face *face = (o_face*)face_new(&o_faceType, NULL, NULL);
+	KuduFace *d_face = kudu_face_new(d_object, d_shape->face);
+	if (d_shape->face == NULL) d_shape->face = d_face;
+
+	face->d_face = d_face;
+	face->d_object = d_object;
+
+	return (PyObject*)face;
+}
+
+
 
 
 /**********************************/
@@ -642,7 +847,7 @@ static PyObject *bone_hAngle(o_bone *self)
 	KuduBone *d_bone = self->d_bone;
 	if (d_bone == NULL) return Py_BuildValue("i", -1);
 
-	return Py_BuildValue("f", d_bone->hAngle);
+	/*return Py_BuildValue("f", d_bone->hAngle);*/
 }
 
 static PyObject *bone_vAngle(o_bone *self)
@@ -650,7 +855,7 @@ static PyObject *bone_vAngle(o_bone *self)
 	KuduBone *d_bone = self->d_bone;
 	if (d_bone == NULL) return Py_BuildValue("i", -1);
 
-	return Py_BuildValue("f", d_bone->vAngle);
+	/*return Py_BuildValue("f", d_bone->vAngle);*/
 }
 
 static PyObject *bone_rAngle(o_bone *self)
@@ -660,7 +865,7 @@ static PyObject *bone_rAngle(o_bone *self)
 
 	kudu_bone_update(d_bone);
 
-	return Py_BuildValue("f", d_bone->rAngle);
+	/*return Py_BuildValue("f", d_bone->rAngle);*/
 }
 
 static PyObject *bone_length(o_bone *self)
@@ -731,8 +936,8 @@ static PyObject *bone_set_hAngle(o_bone *self, PyObject *args)
 	if ((d_bone == NULL) || (!(PyArg_ParseTuple(args, "f", &val))))
 		RETURN_FALSE
 
-	d_bone->hAngle = val;
-	kudu_math_degrees_clamp(&d_bone->hAngle);
+	/*d_bone->hAngle = val;
+	kudu_math_degrees_clamp(&d_bone->hAngle);*/
 	o_bone_update(self);
 
 	RETURN_TRUE
@@ -746,8 +951,8 @@ static PyObject *bone_set_vAngle(o_bone *self, PyObject *args)
 	if ((d_bone == NULL) || (!(PyArg_ParseTuple(args, "f", &val))))
 		RETURN_FALSE
 
-	d_bone->vAngle = val;
-	kudu_math_degrees_clamp(&d_bone->vAngle);
+	/*d_bone->vAngle = val;
+	kudu_math_degrees_clamp(&d_bone->vAngle);*/
 	o_bone_update(self);
 
 	RETURN_TRUE
@@ -761,8 +966,8 @@ static PyObject *bone_set_rAngle(o_bone *self, PyObject *args)
 	if ((d_bone == NULL) || (!(PyArg_ParseTuple(args, "f", &val))))
 		RETURN_FALSE
 
-	d_bone->rAngle = val;
-	kudu_math_degrees_clamp(&d_bone->rAngle);
+	/*d_bone->rAngle = val;
+	kudu_math_degrees_clamp(&d_bone->rAngle);*/
 	o_bone_update(self);
 
 	RETURN_TRUE
@@ -818,14 +1023,14 @@ static PyObject *bone_set(o_bone *self, PyObject *args)
 
 	if ((d_bone == NULL) || (!(PyArg_ParseTuple(args, "ffff", &ha, &va, &ra, &l)))) RETURN_FALSE
 
-	d_bone->hAngle = ha;
+	/*d_bone->hAngle = ha;
 	d_bone->vAngle = va;
-	d_bone->rAngle = ra;
+	d_bone->rAngle = ra;*/
 	d_bone->length = l;
 
-	kudu_math_degrees_clamp(&d_bone->hAngle);
+	/*kudu_math_degrees_clamp(&d_bone->hAngle);
 	kudu_math_degrees_clamp(&d_bone->vAngle);
-	kudu_math_degrees_clamp(&d_bone->rAngle);
+	kudu_math_degrees_clamp(&d_bone->rAngle);*/
 	if (d_bone->length < 0.0) d_bone->length = 0.0;
 	o_bone_update(self);
 
@@ -916,7 +1121,7 @@ static PyObject *bone_add_child(o_bone *self)
 	KuduObject *d_object = self->d_object;
 	if ((d_bone == NULL) || (d_object == NULL)) return Py_BuildValue("i", -1);
 
-	KuduBone *new_bone = kudu_bone_add_child(d_object, d_bone);
+	KuduBone *new_bone = kudu_bone_add_child(d_bone);
 
 	o_bone *r_bone = (o_bone*)bone_new(&o_boneType, NULL, NULL);
 	r_bone->d_bone = new_bone;
@@ -931,7 +1136,7 @@ static PyObject *bone_add_parent(o_bone *self)
 	KuduObject *d_object = self->d_object;
 	if ((d_bone == NULL) || (d_object == NULL)) return Py_BuildValue("i", -1);
 
-	KuduBone *new_bone = kudu_bone_add_parent(d_object, d_bone);
+	KuduBone *new_bone = kudu_bone_add_parent(d_bone);
  
 	if (d_bone == d_object->bone) d_object->bone = new_bone;
 
@@ -1010,6 +1215,7 @@ static PyObject *object_id(o_object*);
 static PyObject *object_root_bone(o_object*);
 static PyObject *object_set_frame(o_object*, PyObject*);
 static PyObject *object_key_frames(o_object*);
+static PyObject *object_new_shape(o_object*, PyObject*, PyObject*);
 
 static PyMethodDef o_object_methods[] = {
 	{"id", (PyCFunction)object_id, METH_NOARGS, "Return the object ID"},
@@ -1020,6 +1226,7 @@ static PyMethodDef o_object_methods[] = {
 	{"root_bone", (PyCFunction)object_root_bone, METH_NOARGS, "Return the root bone"},
 	{"set_frame", (PyCFunction)object_set_frame, METH_VARARGS, "Set a frame on this object"},
 	{"key_frames", (PyCFunction)object_key_frames, METH_NOARGS, "Return the key frame numbers for this object"},
+	{"new_shape", (PyCFunction)object_new_shape, METH_NOARGS, "Create a new shape for this object"},
 	{NULL, NULL, 0, NULL},
 };
 
@@ -1171,6 +1378,22 @@ static PyObject *object_key_frames(o_object *self)
 
 	return tuple;
 }
+
+static PyObject *object_new_shape(o_object *self, PyObject *args, PyObject *kwds)
+{
+	KuduObject *d_object = self->d_object;
+	if (d_object == NULL) RETURN_NONE
+
+	o_shape *shape = (o_shape*)shape_new(&o_shapeType, NULL, NULL);
+	KuduShape *d_shape = kudu_shape_new(d_object, d_object->skin);
+	if (d_object->skin == NULL) d_object->skin = d_shape;
+
+	shape->d_shape = d_shape;
+	shape->d_object = d_object;
+
+	return (PyObject*)shape;
+}
+
 
 /****************************************/
 /* object module functions declarations	*/

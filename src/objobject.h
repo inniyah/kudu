@@ -19,18 +19,20 @@
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  */
 /*                                                                            */
 /******************************************************************************/
-#ifndef ABOUT_H_INCLUDED
-#define ABOUT_H_INCLUDED
+#ifndef OBJOBJECT_H_INCLUDED
+#define OBJOBJECT_H_INCLUDED
 
 #include "globals.h"
+#include "utils.h"
+#include "wingedge.h"
+#include "vertices.h"
+#include "object.h"
+#include "materials.h"
+#include "texture.h"
 
 
-int kudu_about_printout(void);
-GtkWidget *kudu_about_splash_window(void);
-void kudu_about_splash_display(void);
-void kudu_about_splash_set_parent(GtkWindow*);
-gboolean kudu_about_splash_close(void);
-void kudu_about_splash_message(char*);
+int kudu_object_import_obj_material_lib(KuduObject*, char*, char*);
+int kudu_object_import_obj_from_file(KuduObject*, char*);
 
-#endif /* ABOUT_H_INCLUDED */
+#endif /* OBJOBJECT_H_INCLUDED */
 

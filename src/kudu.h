@@ -27,10 +27,12 @@
 #include "mathematics.h"
 #include "graphics.h"
 #include "font.h"
+#include "joints.h"
 #include "bones.h"
 #include "utils.h"
 #include "vertices.h"
 #include "rwxobject.h"
+#include "objobject.h"
 #include "wingedge.h"
 #include "kudu_menus.h"
 #include "object.h"
@@ -51,6 +53,11 @@
 #include "toolbar.h"
 #include "gui_scripts.h"
 #include "scripts.h"
+#include "image.h"
+#include "texture.h"
+#include "joints_edit.h"
+#include "uiplugin.h"
+#include "about.h"
 
 
 
@@ -62,9 +69,9 @@ int kudu_program_bone_mode_set(int);
 static gboolean display(GtkWidget*, GdkEventExpose*, gpointer);
 gint kudu_program_exit(GtkWidget*, gpointer);
 void kudu_program_request_save_kudu_object(void);
-static void main_menu_action(GtkWidget*, guint);
+static void main_menu_action(GtkWidget*, gpointer);
 void kudu_program_edit_mode_set(int);
-int kudu_program_selection_mode_set(int);
+int kudu_program_selection_mode_set(int, int);
 int kudu_program_skin_list_regen(void);
 int kudu_program_skeleton_list_regen(void);
 int kudu_program_skeleton_calculate(void);

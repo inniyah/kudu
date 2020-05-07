@@ -24,6 +24,7 @@
 
 #include "globals.h"
 #include "utils.h"
+#include "about.h"
 
 #define KO_TYPE_INT 1
 #define KO_TYPE_FLOAT 2
@@ -36,6 +37,8 @@ typedef enum {
 	KO_WINDOW_SIZE,
 	KO_WINDOW_MAXED,
 	KO_MOUSE_SCROLL_ZOOM,
+	KO_USER_ACCEL_KEYS,
+	KO_SHOW_SPLASH,
 
 	KO_BONE_DIALOG_POSITION,
 	KO_BONE_DIALOG_LOCK_NAME,
@@ -61,12 +64,16 @@ typedef enum {
 	KO_BONES_COLOUR_DEFAULT,
 	KO_BONES_COLOUR_SELECTED,
 	KO_BONES_COLOUR_CHILDREN,
+	KO_JOINTS_VISIBLE,
+	KO_JOINTS_COLOUR_DEFAULT,
+	KO_JOINTS_COLOUR_SELECTED,
 
 	/* Skin drawing options */
 	KO_SKIN_LIT,
 	KO_SKIN_SMOOTH,
 	KO_SKIN_REAL_COLOURS,
 	KO_SKIN_VISIBLE,
+	KO_SKIN_TEXTURED,
 	KO_SKIN_DETAIL,
 	KO_SKIN_COLOUR_DEFAULT,
 	KO_SKIN_COLOUR_SELECTED,
@@ -94,6 +101,8 @@ static const char *K_OPTION_NAME[] = {
 	"KO_WINDOW_SIZE",
 	"KO_WINDOW_MAXED",
 	"KO_MOUSE_SCROLL_ZOOM",
+	"KO_USER_ACCEL_KEYS",
+	"KO_SHOW_SPLASH",
 
 	"KO_BONE_DIALOG_POSITION",
 	NULL,
@@ -119,12 +128,16 @@ static const char *K_OPTION_NAME[] = {
 	"KO_BONES_COLOUR_DEFAULT",
 	"KO_BONES_COLOUR_SELECTED",
 	"KO_BONES_COLOUR_CHILDREN",
+	"KO_JOINTS_VISIBLE",
+	"KO_JOINTS_COLOUR_DEFAULT",
+	"KO_JOINTS_COLOUR_SELECTED",
 
 	/* Skin drawing options */
 	"KO_SKIN_LIT",
 	"KO_SKIN_SMOOTH",
 	"KO_SKIN_REAL_COLOURS",
 	"KO_SKIN_VISIBLE",
+	"KO_SKIN_TEXTURED",
 	"KO_SKIN_DETAIL",
 	"KO_SKIN_COLOUR_DEFAULT",
 	"KO_SKIN_COLOUR_SELECTED",
@@ -176,5 +189,10 @@ int kudu_options_get(KuduOption, int, ...);
 int kudu_options_set_defaults(void);
 int kudu_options_save_to_file(char*);
 int kudu_options_load_from_file(char*);
+
+int kudu_options_save_accel_map(void);
+int kudu_options_load_accel_map(void);
+
+int kudu_options_parse(int, char**);
 
 #endif /* OPTIONS_H_INCLUDED */

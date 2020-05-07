@@ -90,7 +90,7 @@ KuduMaterial *kudu_material_new(KuduObject *object, KuduMaterial *previous_mater
 
 	material->diffuse[3] = 1.0;
 	material->shininess = 50.0;
-
+	material->texture = NULL;
 	material->id = object->next_material_id++;
 	sprintf(material->name, "Material %d", material->id);
 
@@ -284,5 +284,41 @@ int kudu_material_num_after(KuduMaterial *material)
 	} while (current_material->next_material != NULL);
 
 	return count;
+}
+
+KuduMaterial *kudu_material_find_with_name(KuduMaterial *material, char *name)
+{
+	if ((material == NULL) || (name == NULL)) return NULL;
+
+
+	KuduMaterial *current_material;
+	int parse_backwards, found_or_eol;
+
+	for (parse_backwards = 0; parse_backwards < 2; parse_backwards++) {
+		current_material = NULL;
+
+		do {
+			if (current_material == NULL) current_material = material;
+			else {
+				if (!parse_backwards) current_material = current_material->next_material;
+				else	current_material = current_material->previous_material;
+			}
+
+			if (!parse_backwards) {
+				if ((current_material->next_material != NULL) && (strcmp(current_material->name, name) != 0))
+					found_or_eol = FALSE;
+				else	found_or_eol = TRUE;
+			} else {
+				if ((current_material->previous_material != NULL) && (strcmp(current_material->name, name) != 0))
+					found_or_eol = FALSE;
+				else	found_or_eol = TRUE;
+			}
+
+		} while (!found_or_eol);
+
+		if (strcmp(current_material->name, name) == 0) return current_material;
+	}
+
+	return NULL;
 }
 

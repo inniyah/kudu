@@ -73,6 +73,8 @@ KuduBone *kudu_bone_new(KuduObject *object)
 	}
 
 	KuduBone *bone;
+	KuduJoint *s_joint, *e_joint;
+
 	int a, b;
 
 	bone = (KuduBone*)malloc(sizeof(KuduBone));
@@ -83,24 +85,45 @@ KuduBone *kudu_bone_new(KuduObject *object)
 
 	bone->id = object->next_bone_id++;
 
-	for (a = 0; a < 4; a++)
-		for (b = 0; b < 4; b++) bone->matrix[a][b] = 0.0;
+	s_joint = kudu_joint_new(object);
+	e_joint = kudu_joint_new(object);
+	kudu_joint_incref(s_joint);
+	kudu_joint_incref(e_joint);
+
+	for (a = 0; a < 16; a++) {
+		bone->matrix[a] = 0.0;
+		bone->pmatrix[a] = 0.0;
+	}
+
+	/* Local and global rotation matrices (lmatrix & gmatrix) must be initialized to identity matrices */
+	kudu_math_matrix_set_identity(bone->pmatrix);
+
+	kudu_math_quat_set_identity(bone->lquat);
+	kudu_math_quat_set_identity(bone->gquat);
+
+	kudu_math_quat_set_identity(bone->lpquat);
 
 	sprintf(bone->name, "Bone: %d", bone->id);
-	bone->hAngle = 0.0;
-	bone->vAngle = 0.0;
-	bone->rAngle = 0.0;
+
+	bone->rotation = 0.0;
 	bone->length = 1.0;
-	bone->posX = 0.0;
-	bone->posY = 0.0;
-	bone->posZ = 0.0;
+	bone->plength = 0.0;
+
+	for (a = 0; a < 3; a++) bone->axis[a] = 0.0;
+
 	bone->selected = FALSE;
 	bone->magic_touch = 0;
+
+	bone->s_joint = s_joint;
+	bone->e_joint = e_joint;
+	s_joint->bone = bone;
+	e_joint->bone = bone;
 
 	bone->parent = NULL;
 	bone->first_child = NULL;
 	bone->next_sibling = NULL;
 	bone->previous_sibling = NULL;
+	bone->object = object;
 
 	return bone;
 }
@@ -123,50 +146,68 @@ KuduBone *kudu_bone_new_with_id(KuduObject *object, int id)
 	return bone;
 }
 
-void kudu_bone_calculate_pos_end(KuduBone *bone)
+int kudu_bone_set_joints(KuduBone *bone, KuduJoint* s_joint, KuduJoint *e_joint)
 {
 	if (bone == NULL) {
 		kudu_error(KE_OBJECT_INVALID);
-		return;
+		return FALSE;
 	}
 
-	float x, y, z;
+	int rv = 0;
+	/*KuduObject *object = bone->object;*/
+	/*KuduJointList *joint_list = object->joint_list;*/
 
-	x = 0.0;
-	y = 0.0;
-	z = bone->length;
+	if (bone->s_joint != s_joint) {
+		if (bone->s_joint != NULL) kudu_joint_decref(bone->s_joint);
 
-	bone->lineX = bone->posX + (x * (bone->matrix[0][0])) +
-		(y * (bone->matrix[1][0])) +
-		(z * (bone->matrix[2][0])) +
-		(bone->matrix[3][0]);
+		if (s_joint != NULL) {
+			if (kudu_joint_incref(s_joint)) {
+				bone->s_joint = s_joint;
+				if (s_joint->bone == NULL) s_joint->bone = bone;
+				rv++;
+			} else bone->s_joint = NULL;
+		} else {
+			bone->s_joint = NULL;
+			rv++;
+		}
+	} else rv++;
 
-	bone->lineY = bone->posY + (x * (bone->matrix[0][1])) +
-		(y * (bone->matrix[1][1])) +
-		(z * (bone->matrix[2][1])) +
-		(bone->matrix[3][1]);
+	if (bone->e_joint != e_joint) {
+		if (bone->e_joint != NULL) kudu_joint_decref(bone->e_joint);
 
-	bone->lineZ = bone->posZ + (x * (bone->matrix[0][2])) +
-		(y * (bone->matrix[1][2])) +
-		(z * (bone->matrix[2][2])) +
-		(bone->matrix[3][2]);
+		if (e_joint != NULL) {
+			if (kudu_joint_incref(e_joint)) {
+				bone->e_joint = e_joint;
+				e_joint->bone = bone;
+				rv++;
+			} else bone->e_joint = NULL;
+		} else {
+			bone->e_joint = NULL;
+			rv++;
+		}
+	} else rv++;
 
+	return rv;
 }
 
-KuduBone *kudu_bone_add_child(KuduObject *object, KuduBone *parent_bone)
+KuduBone *kudu_bone_add_child(KuduBone *parent_bone)
 {
-	if ((parent_bone == NULL) || (object == NULL)) {
+	if (parent_bone == NULL) {
 		kudu_error(KE_OBJECT_INVALID);
 		return NULL;
 	}
 
 	KuduBone *bone, *next_bone;
-
+	KuduObject *object = parent_bone->object;
+	/*int s_jid, e_jid;*/
+	KuduJoint *s_joint, *e_joint;
 
 	bone = kudu_bone_new(object);
 	if (bone == NULL) return NULL;
 
 	bone->parent = parent_bone;
+	s_joint = parent_bone->e_joint;
+	e_joint = bone->e_joint;
 
 	if (parent_bone->first_child == NULL) {
 		parent_bone->first_child = bone;
@@ -183,21 +224,34 @@ KuduBone *kudu_bone_add_child(KuduObject *object, KuduBone *parent_bone)
 	}
 
 	bone->length = parent_bone->length;
+	kudu_bone_set_joints(bone, s_joint, e_joint);
 
 	return bone;
 }
 
-KuduBone *kudu_bone_add_parent(KuduObject *object, KuduBone *bone)
+KuduBone *kudu_bone_add_parent(KuduBone *bone)
 {
-	if ((bone == NULL) || (object == NULL)) {
+	if (bone == NULL) {
 		kudu_error(KE_OBJECT_INVALID);
 		return NULL;
 	}
 
 	KuduBone *parent_bone, *old_parent, *previous_sibling, *next_sibling;
+	KuduObject *object = bone->object;
+	KuduJoint *s_joint, *e_joint, *p_joint;
+	int a;
+	/*int s_jid, e_jid;*/
 
 	parent_bone = kudu_bone_new(object);
 	if (parent_bone == NULL) return NULL;
+
+	/* parent_bone must claim bone's s_joint as it's own s_joint and keep it's own e_joint */
+	s_joint = bone->s_joint;
+	e_joint = parent_bone->e_joint;
+	kudu_bone_set_joints(parent_bone, s_joint, e_joint);
+
+	/* bone should aquire parent_bone's e_joint as it's s_joint and keep it's own e_joint */
+	kudu_bone_set_joints(bone, e_joint, bone->e_joint);
 
 	old_parent = bone->parent;
 	previous_sibling = bone->previous_sibling;
@@ -210,12 +264,17 @@ KuduBone *kudu_bone_add_parent(KuduObject *object, KuduBone *bone)
 
 	if (old_parent != NULL) {
 		parent_bone->length = old_parent->length;
+		s_joint = old_parent->e_joint;
 		/* Is this the "first_bone" of it's parent ?? */
 		if (old_parent->first_child == bone) old_parent->first_child = parent_bone;
 	} else { /* OK we are inserting this bone before a current root bone, so we must inherit its position */
-		parent_bone->posX = bone->posX;
+	/*	joint = kudu_bone_get_s_joint(parent_bone);*/
+	/*	p_joint = kudu_bone_get_s_joint(bone);*/
+		p_joint = bone->s_joint;
+		for (a = 0; a < 3; a++) s_joint->pos[a] = p_joint->pos[a];
+		/*parent_bone->posX = bone->posX;
 		parent_bone->posY = bone->posY;
-		parent_bone->posZ = bone->posZ;
+		parent_bone->posZ = bone->posZ;*/
 	}
 
 	if (previous_sibling != NULL) previous_sibling->next_sibling = parent_bone;
@@ -228,17 +287,24 @@ KuduBone *kudu_bone_add_parent(KuduObject *object, KuduBone *bone)
 	return parent_bone;
 }
 
-KuduBone *kudu_bone_add_sibling(KuduObject *object, KuduBone *previous_sibling)
+KuduBone *kudu_bone_add_sibling(KuduBone *previous_sibling)
 {
-	if ((previous_sibling == NULL) || (object == NULL)) {
+	if (previous_sibling == NULL) {
 		kudu_error(KE_OBJECT_INVALID);
 		return NULL;
 	}
 
 	KuduBone *bone, *old_next_sibling;
+	KuduObject *object = previous_sibling->object;
+	/*int s_jid, e_jid;*/
+	KuduJoint *s_joint, *e_joint;
 
 	bone = kudu_bone_new(object);
 	if (bone == NULL) return NULL;
+	if (previous_sibling->parent == NULL) s_joint = bone->s_joint;
+	else	s_joint = previous_sibling->s_joint;
+
+	e_joint = bone->e_joint;
 
 	old_next_sibling = previous_sibling->next_sibling;
 
@@ -248,6 +314,8 @@ KuduBone *kudu_bone_add_sibling(KuduObject *object, KuduBone *previous_sibling)
 	previous_sibling->next_sibling = bone;
 
 	if (old_next_sibling != NULL) old_next_sibling->previous_sibling = bone;
+
+	kudu_bone_set_joints(bone, s_joint, e_joint);
 
 	return bone;
 }
@@ -260,6 +328,12 @@ int kudu_bone_insert_parent(KuduBone *bone, KuduBone *parent_bone)
 	}
 
 	KuduBone *old_parent, *previous_sibling, *next_sibling;
+	/*KuduObject *object = bone->object;*/
+	KuduJoint *s_joint, *e_joint;
+	/*int s_jid, e_jid;*/
+
+	s_joint = parent_bone->s_joint;
+	e_joint = bone->s_joint;
 
 	old_parent = bone->parent;
 	previous_sibling = bone->previous_sibling;
@@ -271,6 +345,7 @@ int kudu_bone_insert_parent(KuduBone *bone, KuduBone *parent_bone)
 	parent_bone->first_child = bone;
 
 	if (old_parent != NULL) {
+		s_joint = old_parent->e_joint;
 		/* Is this the "first_bone" of it's parent ?? */
 		if (old_parent->first_child == bone) old_parent->first_child = parent_bone;
 	}
@@ -281,6 +356,8 @@ int kudu_bone_insert_parent(KuduBone *bone, KuduBone *parent_bone)
 	bone->parent = parent_bone;
 	bone->previous_sibling = NULL;
 	bone->next_sibling = NULL;
+
+	kudu_bone_set_joints(parent_bone, s_joint, e_joint);
 
 	return TRUE;
 }
@@ -293,6 +370,11 @@ int kudu_bone_adopt_child(KuduBone *parent_bone, KuduBone *bone)
 	}
 
 	KuduBone *next_bone;
+	/*KuduObject *object = parent_bone->object;*/
+	/*int s_jid, e_jid;*/
+	KuduJoint *s_joint, *e_joint;
+	e_joint = bone->e_joint;
+	s_joint = parent_bone->e_joint;
 
 	bone->parent = parent_bone;
 
@@ -310,6 +392,8 @@ int kudu_bone_adopt_child(KuduBone *parent_bone, KuduBone *bone)
 		bone->previous_sibling = next_bone;
 	}
 
+	kudu_bone_set_joints(bone, s_joint, e_joint);
+
 	return TRUE;
 }
 
@@ -321,6 +405,15 @@ int kudu_bone_adopt_sibling(KuduBone *bone, KuduBone *sibling)
 	}
 
 	KuduBone *old_next_sibling;
+	KuduJoint *s_joint, *e_joint;
+
+	/* If bone is a root bone then sibling should keep it's own joints, otherwise inherit bone's s_joint */
+	if (bone->parent != NULL) {
+		s_joint = bone->s_joint;
+		e_joint = sibling->e_joint;
+		kudu_bone_set_joints(sibling, s_joint, e_joint);
+	}
+
 
 	old_next_sibling = bone->next_sibling;
 
@@ -331,11 +424,12 @@ int kudu_bone_adopt_sibling(KuduBone *bone, KuduBone *sibling)
 
 	if (old_next_sibling != NULL) old_next_sibling->previous_sibling = sibling;
 
+
 	return TRUE;
 }
 
 /* "Unlinks" a bone - removes it and all its children from a skeleton without destroying them */
-/* Sort of like "cutting" a directory in a gui browser */
+/* Sort of like "cutting" a directory in a gui file browser */
 int kudu_bone_unlink(KuduBone *bone)
 {
 	if (bone == NULL) {
@@ -344,10 +438,16 @@ int kudu_bone_unlink(KuduBone *bone)
 	}
 
 	KuduBone *parent, *previous_sibling, *next_sibling, *first_child, *next_child, *last_child;
+	KuduObject *object = bone->object;
+	/*int s_jid, e_jid;*/
+	KuduJoint *s_joint, *e_joint;
 
 	parent = bone->parent;
 	previous_sibling = bone->previous_sibling;
 	next_sibling = bone->next_sibling;
+
+	e_joint = bone->e_joint;
+	s_joint = kudu_joint_new(object);
 
 	if (parent != NULL) {	/* This is not a root bone */
 		if (parent->first_child == bone) {	/* This bone is the first child of its parent */
@@ -369,6 +469,8 @@ int kudu_bone_unlink(KuduBone *bone)
 	bone->next_sibling = NULL;
 	bone->previous_sibling = NULL;
 
+	kudu_bone_set_joints(bone, s_joint, e_joint);
+
 	return TRUE;
 }
 
@@ -381,11 +483,15 @@ int kudu_bone_destroy(KuduBone *bone)
 	}
 
 	KuduBone *parent, *previous_sibling, *next_sibling, *first_child, *next_child, *last_child;
+	KuduObject *object = bone->object;
+	KuduJoint *s_joint, *e_joint, *joint;
 
 	parent = bone->parent;
 	previous_sibling = bone->previous_sibling;
 	next_sibling = bone->next_sibling;
 	first_child = bone->first_child;
+	s_joint = bone->s_joint;
+	e_joint = bone->e_joint;
 
 	/* Reparent all this bones children */
 	if (first_child != NULL) {
@@ -394,6 +500,21 @@ int kudu_bone_destroy(KuduBone *bone)
 			if (next_child == NULL) next_child = first_child;
 			else	next_child = next_child->next_sibling;
 			next_child->parent = parent;
+
+			/* Children should inherit their parent's s_joint whilst keeping their own e_joint
+			   however if child has no "grandparent" then it should keep it's own s_joint as well */
+			if (parent != NULL) kudu_bone_set_joints(next_child, s_joint, next_child->e_joint);
+			else {
+				/* In the case that a root bone has been deleted which has more than one child
+				   each child (excluding the first) must get a new s_joint, as they are each
+				   becoming a new root bone */
+				if (next_child->previous_sibling != NULL) {
+					joint = kudu_joint_new(object);
+					/* Make sure position stays the same */
+					kudu_joint_clone_values(joint, e_joint);
+					kudu_bone_set_joints(next_child, joint, next_child->e_joint);
+				}
+			}
 
 		} while (next_child->next_sibling != NULL);
 		last_child = next_child;
@@ -434,6 +555,8 @@ int kudu_bone_destroy(KuduBone *bone)
 			if (next_sibling != NULL) next_sibling->previous_sibling = previous_sibling;
 		}
 	}
+
+	kudu_bone_set_joints(bone, NULL, NULL);
 
 	free(bone);
 	bone = NULL;
@@ -484,9 +607,6 @@ int kudu_bone_copy_values(KuduBone* copy_to, KuduBone *copy_from)
 		return FALSE;
 	}
 
-	copy_to->hAngle = copy_from->hAngle;
-	copy_to->vAngle = copy_from->vAngle;
-	copy_to->rAngle = copy_from->rAngle;
 	copy_to->length = copy_from->length;
 	copy_to->id = copy_from->id;
 
@@ -502,13 +622,14 @@ int kudu_bone_update(KuduBone *bone)
 	}
 
 	KuduBone *current_bone;
-	int gone_back;
+	int gone_back, pose;
 
-	if (bone->parent != NULL) {
-		kudu_bone_calculate_matrix(bone, bone->parent);
-		kudu_bone_calculate_pos_start(bone, bone->parent);
-	} else kudu_bone_calculate_matrix_root(bone);
+	/* Are we in editor or animator mode ? */
+	/* If in animator mode set: pose = TRUE this is so that the correct quaternions get adjusted */
+	if (program.mode == PROGRAM_MODE_EDIT) pose = FALSE;
+	else if (program.mode == PROGRAM_MODE_ANIMATION) pose = TRUE;
 
+	kudu_bone_calculate_matrix(bone, pose);
 	kudu_bone_calculate_pos_end(bone);
 
 	if (bone->first_child == NULL) return TRUE;
@@ -518,8 +639,8 @@ int kudu_bone_update(KuduBone *bone)
 
 	do {
 		if (!gone_back) {
-			kudu_bone_calculate_matrix(current_bone, current_bone->parent);
-			kudu_bone_calculate_pos_start(current_bone, current_bone->parent);
+			kudu_bone_calculate_matrix(current_bone, pose);
+			/*kudu_bone_calculate_pos_start(current_bone, current_bone->parent);*/
 			kudu_bone_calculate_pos_end(current_bone);
 		}
 
@@ -767,27 +888,12 @@ int kudu_bone_num_children(KuduBone *bone)
 		return 0;
 	}
 
-	KuduBone *current_bone;
-	int count = 0, gone_back = FALSE;
+	/* New method: since introducing joints we can simply check the num_bones value -1
+	   of a bones e_joint to find it's children count */
+	KuduJoint *joint = bone->e_joint;
+	return joint->num_bones;
 
-	current_bone = bone;
-
-	do {
-		if (!gone_back) count++;
-
-		if ((current_bone->first_child != NULL) && (!gone_back)) current_bone = current_bone->first_child;
-		else	if (current_bone->next_sibling != NULL) {
-				if (current_bone != bone) {
-					current_bone = current_bone->next_sibling;
-					gone_back = FALSE;
-				}
-			} else {
-				if (current_bone->parent != NULL) current_bone = current_bone->parent;
-				gone_back = TRUE;
-			}
-	} while (current_bone != bone);
-
-	return count;
+	/* Old method was to walk the child child list and keep count ... */
 }
 
 /*int kudu_bone_has_angle_shifted(KuduBone* bone)
@@ -840,7 +946,78 @@ void kudu_bone_position_has_shifted(KuduBone* bone)
 	kudu_util_int_bit_flag_set(&bone->ps, NOKE_POSITION_SHIFTED);
 }*/
 
-int kudu_bone_joint_by_percent(KuduBone *bone, KuduBone *fake_bone, GLubyte percent)
+
+/* Calculate position of bones end joint */
+int kudu_bone_both_joints_selected(KuduBone *bone)
+{
+	if (bone == NULL) return FALSE;
+
+	KuduJoint *s_joint = bone->s_joint;
+	KuduJoint *e_joint = bone->e_joint;
+
+	if ((s_joint->selected) && (e_joint->selected)) return TRUE;
+
+	return FALSE;
+}
+
+/* Calculate the e_joint pos of a bone */
+void kudu_bone_calculate_pos_end(KuduBone *bone)
+{
+	if (bone == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return;
+	}
+
+	int a;
+	float len, plen;
+	KuduJoint *s_joint, *e_joint;
+
+	len = bone->length;
+	plen = len + bone->plength;
+
+	s_joint = bone->s_joint;
+	e_joint = bone->e_joint;
+
+	e_joint->zlen = s_joint->zlen + bone->length;
+
+	/*e_joint->pos[0] = 0.0;
+	e_joint->pos[0] = 0.0;
+	e_joint->pos[0] = 0.0; */ /*bone->length - e_joint->zlen;*/
+
+	for (a = 0; a < 3; a++) {
+		e_joint->pos[a] = s_joint->pos[a] + (len * (bone->matrix[8+a])) + (bone->matrix[12+a]);
+		/*if (program.mode == PROGRAM_MODE_ANIMATION) e_joint->ppos[a] = s_joint->ppos[a];*/
+
+		if (program.mode == PROGRAM_MODE_ANIMATION)
+			if (bone->parent != NULL) e_joint->ppos[a] = s_joint->ppos[a] + (plen * (bone->pmatrix[8+a])) + (bone->pmatrix[12+a]);
+			else  e_joint->ppos[a] = s_joint->ppos[a] + s_joint->pos[a] + (plen * (bone->pmatrix[8+a])) + (bone->pmatrix[12+a]);
+
+		/*	e_joint->ppos[a] = s_joint->ppos[a] + (len * (bone->pmatrix[8+a])) + (bone->pmatrix[12+a]);*/
+	}
+}
+
+/* Attempt to calculate the bone's axis from the position of it's joints */
+/* *EXPERIMENTAL* not working */
+int kudu_bone_calculate_inverse(KuduBone *bone)
+{
+	if (bone == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	KuduJoint *s_joint = bone->s_joint;
+	KuduJoint *e_joint = bone->e_joint;
+	float h,v;
+
+	bone->length = kudu_math_distance_between(e_joint->pos, s_joint->pos);
+	kudu_math_angles_between_v(e_joint->pos, s_joint->pos, &h, &v);
+	/*kudu_bone_magic_touch(bone);*/
+
+	return TRUE;
+}
+
+
+int kudu_bone_joint_by_percent(KuduBone *bone, KuduBone *fake_bone, unsigned char percent)
 {
 	if ((bone == NULL) || (fake_bone == NULL)) {
 		kudu_error(KE_OBJECT_INVALID);
@@ -848,16 +1025,17 @@ int kudu_bone_joint_by_percent(KuduBone *bone, KuduBone *fake_bone, GLubyte perc
 	}
 
 	KuduBone *parent;
+	KuduJoint *joint, *f_joint;
 
 	float hA, vA, rA, inP;
-	int root = FALSE;
+	int root = FALSE, a;
 
 	parent = bone->parent;
 	if (parent == NULL) {
 		root = TRUE;
 	}
 
-	hA = bone->hAngle;
+	/*hA = bone->hAngle;
 	vA = bone->vAngle;
 	rA = bone->rAngle;
 
@@ -876,16 +1054,19 @@ int kudu_bone_joint_by_percent(KuduBone *bone, KuduBone *fake_bone, GLubyte perc
 
 	kudu_math_degrees_clamp(&fake_bone->hAngle);
 	kudu_math_degrees_clamp(&fake_bone->vAngle);
-	kudu_math_degrees_clamp(&fake_bone->rAngle);
+	kudu_math_degrees_clamp(&fake_bone->rAngle);*/
 
 	if (!root) {
-		kudu_bone_calculate_matrix(fake_bone, parent);
-		kudu_bone_calculate_pos_start(fake_bone, parent);
+		kudu_bone_calculate_matrix(fake_bone, TRUE);
+		/*kudu_bone_calculate_pos_start(fake_bone, parent);*/
 	} else {
-		fake_bone->posX = bone->posX;
+		joint = bone->s_joint;
+		f_joint = fake_bone->s_joint;
+		for (a = 0; a < 3; a++) f_joint->pos[a] = joint->pos[a];
+		/*fake_bone->posX = bone->posX;
 		fake_bone->posY = bone->posY;
-		fake_bone->posZ = bone->posZ;
-		kudu_bone_calculate_matrix_root(fake_bone);
+		fake_bone->posZ = bone->posZ;*/
+		kudu_bone_calculate_matrix(fake_bone, TRUE);
 	}
 	kudu_bone_calculate_pos_end(fake_bone);
 
@@ -893,201 +1074,98 @@ int kudu_bone_joint_by_percent(KuduBone *bone, KuduBone *fake_bone, GLubyte perc
 	return 0;
 }
 
-void kudu_bone_calculate_matrix_root(KuduBone *bone)
+/* Recalculate the matrices and quaternions of a bone */
+void kudu_bone_calculate_matrix(KuduBone *bone, int update_pose)
 {
 	if (bone == NULL) {
 		kudu_error(KE_OBJECT_INVALID);
 		return;
 	}
 
-	float angle;
-	float vMatrix[4][4], hMatrix[4][4], rMatrix[4][4];
-	float cosA, sinA;
+	float tmat[16], rmat[16], len = 0.0;
+	KuduJoint *joint = bone->s_joint;
+	KuduBone *parent_bone = bone->parent;
 
-	angle = (bone->vAngle * RADDEG);
-	cosA = cos((GLdouble)(angle));
-	sinA = sin((GLdouble)(angle));
+	kudu_math_quat_copy(bone->quat, bone->lquat);
 
-	vMatrix[0][0] = 1.0;
-	vMatrix[0][1] = 0.0;
-	vMatrix[0][2] = 0.0;
-	vMatrix[0][3] = 0.0;
-	
-	vMatrix[1][0] = 0.0;
-	vMatrix[1][1] = cosA;
-	vMatrix[1][2] = -sinA;
-	vMatrix[1][3] = 0.0;
-	
-	vMatrix[2][0] = 0.0;
-	vMatrix[2][1] = sinA;
-	vMatrix[2][2] = cosA;
-	vMatrix[2][3] = 0.0;
+	/*if (update_pose) kudu_math_quat_multiply(bone->quat, bone->lpquat);*/
 
-	vMatrix[3][0] = 0.0;
-	vMatrix[3][1] = 0.0;
-	vMatrix[3][2] = 0.0;
-	vMatrix[3][3] = 1.0;
-
-	angle = (bone->hAngle * RADDEG);
-	cosA = cos((GLdouble)(angle));
-	sinA = sin((GLdouble)(angle));
-
-	hMatrix[0][0] = cosA;
-	hMatrix[0][1] = 0.0;
-	hMatrix[0][2] = sinA;
-	hMatrix[0][3] = 0.0;
-
-	hMatrix[1][0] = 0.0;
-	hMatrix[1][1] = 1.0;
-	hMatrix[1][2] = 0.0;
-	hMatrix[1][3] = 0.0;
-
-	hMatrix[2][0] = -sinA;
-	hMatrix[2][1] = 0.0;
-	hMatrix[2][2] = cosA;
-	hMatrix[2][3] = 0.0;
-
-	hMatrix[3][0] = 0.0;
-	hMatrix[3][1] = 0.0;
-	hMatrix[3][2] = 0.0;
-	hMatrix[3][3] = 1.0;
-
-	angle = (bone->rAngle * RADDEG);
-	cosA = cos((GLdouble)(angle));
-	sinA = sin((GLdouble)(angle));
-
-	rMatrix[0][0] = cosA;
-	rMatrix[0][1] = -sinA;
-	rMatrix[0][2] = 0.0;
-	rMatrix[0][3] = 0.0;
-
-	rMatrix[1][0] = sinA;
-	rMatrix[1][1] = cosA;
-	rMatrix[1][2] = 0.0;
-	rMatrix[1][3] = 0.0;
-
-	rMatrix[2][0] = 0.0;
-	rMatrix[2][1] = 0.0;
-	rMatrix[2][2] = 1.0;
-	rMatrix[2][3] = 0.0;
-
-	rMatrix[3][0] = 0.0;
-	rMatrix[3][1] = 0.0;
-	rMatrix[3][2] = 0.0;
-	rMatrix[3][3] = 1.0;
-
-	/* r,v,h */
-
-	kudu_math_matrix_copy(bone->matrix, rMatrix);
-	kudu_math_matrix_multiply(bone->matrix, vMatrix);
-	kudu_math_matrix_multiply(bone->matrix, hMatrix);
-	
-}
-
-void kudu_bone_calculate_matrix(KuduBone *bone, KuduBone *parent_bone)
-{
-	if ((bone == NULL) || (parent_bone == NULL)) {
-		kudu_error(KE_OBJECT_INVALID);
-		return;
+	if (parent_bone != NULL) {
+		kudu_math_quat_multiply(bone->quat, parent_bone->quat);
+		len = parent_bone->length + parent_bone->plength;
 	}
 
-	float angle;
-	float vMatrix[4][4], hMatrix[4][4], rMatrix[4][4];
-	float cosA, sinA;
+	kudu_math_quat_multiply(bone->quat, bone->gquat);
 
-	angle = (bone->vAngle * RADDEG);
-	cosA = (GLfloat)cos((GLdouble)angle);
-	sinA = (GLfloat)sin((GLdouble)angle);
-
-	vMatrix[0][0] = 1.0;
-	vMatrix[0][1] = 0.0;
-	vMatrix[0][2] = 0.0;
-	vMatrix[0][3] = 0.0;
-
-	vMatrix[1][0] = 0.0;
-	vMatrix[1][1] = cosA;
-	vMatrix[1][2] = -sinA;
-	vMatrix[1][3] = 0.0;
-	
-	vMatrix[2][0] = 0.0;
-	vMatrix[2][1] = sinA;
-	vMatrix[2][2] = cosA;
-	vMatrix[2][3] = 0.0;
-
-	vMatrix[3][0] = 0.0;
-	vMatrix[3][1] = 0.0;
-	vMatrix[3][2] = 0.0;
-	vMatrix[3][3] = 1.0;
+	kudu_math_quat_to_matrix(bone->quat, bone->matrix);
 
 
-	angle = (bone->hAngle * RADDEG);
-	cosA = (GLfloat)cos((GLdouble)angle);
-	sinA = (GLfloat)sin((GLdouble)angle);
+	/* Calculate pose matrix - a whole different cup of tea */
+	if (update_pose) {
 
-	hMatrix[0][0] = cosA;
-	hMatrix[0][1] = 0.0;
-	hMatrix[0][2] = sinA;
-	hMatrix[0][3] = 0.0;
+		/* Local rotation */
+		kudu_math_quat_copy(bone->pquat, bone->lquat);
 
-	hMatrix[1][0] = 0.0;
-	hMatrix[1][1] = 1.0;
-	hMatrix[1][2] = 0.0;
-	hMatrix[1][3] = 0.0;
+		/* Local pose rotation */
+		kudu_math_quat_multiply(bone->pquat, bone->lpquat);
 
-	hMatrix[2][0] = -sinA;
-	hMatrix[2][1] = 0.0;
-	hMatrix[2][2] = cosA;
-	hMatrix[2][3] = 0.0;
+		/* Parent pose quat */
+		if (parent_bone != NULL) {
+			kudu_math_quat_multiply(bone->pquat, parent_bone->pquat);
+		}
 
-	hMatrix[3][0] = 0.0;
-	hMatrix[3][1] = 0.0;
-	hMatrix[3][2] = 0.0;
-	hMatrix[3][3] = 1.0;
+		/* Global rotation */
+		kudu_math_quat_multiply(bone->pquat, bone->gquat);
+
+		/*kudu_math_quat_copy(bone->pquat, bone->lpquat);*/
+		kudu_math_quat_to_matrix(bone->pquat, bone->pmatrix);
 
 
-	angle = (bone->rAngle * RADDEG);
-	cosA = (GLfloat)cos((GLdouble)angle);
-	sinA = (GLfloat)sin((GLdouble)angle);
+		/*if (parent_bone == NULL) {
+			kudu_math_matrix_set_translation(tmat, joint->ppos[0], joint->ppos[1], joint->ppos[2]);
+			kudu_math_matrix_copy(bone->pmatrix, tmat);
+			kudu_math_matrix_multiply(bone->pmatrix, rmat);
+		} else kudu_math_matrix_copy(bone->pmatrix, rmat);*/
 
-	rMatrix[0][0] = cosA;
-	rMatrix[0][1] = -sinA;
-	rMatrix[0][2] = 0.0;
-	rMatrix[0][3] = 0.0;
+	/*	kudu_math_matrix_set_translation(tmat, 0.0, 0.0, bone->plength);
+		kudu_math_matrix_copy(bone->pmatrix, tmat);
 
-	rMatrix[1][0] = sinA;
-	rMatrix[1][1] = cosA;
-	rMatrix[1][2] = 0.0;
-	rMatrix[1][3] = 0.0;
+		kudu_math_matrix_multiply(bone->pmatrix, rmat);*/
 
-	rMatrix[2][0] = 0.0;
-	rMatrix[2][1] = 0.0;
-	rMatrix[2][2] = 1.0;
-	rMatrix[2][3] = 0.0;
+		/*kudu_math_matrix_set_translation(tmat, len, len, len);*/
+		/*kudu_math_matrix_set_translation(tmat, joint->pos[0], joint->pos[1], joint->pos[2]);
 
-	rMatrix[3][0] = 0.0;
-	rMatrix[3][1] = 0.0;
-	rMatrix[3][2] = 0.0;
-	rMatrix[3][3] = 1.0;
+		kudu_math_matrix_multiply(bone->pmatrix, bone->matrix);*/
 
-	/* r, v, h */
-	/*kudu_math_matrix_multiply(hMatrix, vMatrix);*/
-
-	kudu_math_matrix_copy(bone->matrix, rMatrix);
-	kudu_math_matrix_multiply(bone->matrix, vMatrix);
-	kudu_math_matrix_multiply(bone->matrix, hMatrix);
-	kudu_math_matrix_multiply(bone->matrix, parent_bone->matrix);
-
+		/*if (parent_bone != NULL) kudu_math_matrix_multiply(bone->pmatrix, parent_bone->pmatrix);*/
+		/*else {*/
+			/*kudu_math_matrix_set_translation(tmat, joint->pos[0], joint->pos[1], joint->pos[2]);
+			kudu_math_matrix_multiply(bone->pmatrix, tmat);*/
+		/*}*/
+	}
 }
 
-void kudu_bone_calculate_pos_start(KuduBone *bone, KuduBone *parent_bone)
+int kudu_bone_apply_rotation(KuduBone *bone, float angle, int axis, int pose)
 {
-	if ((bone == NULL) || (parent_bone == NULL)) {
+	if (bone == NULL) {
 		kudu_error(KE_OBJECT_INVALID);
-		return;
+		return FALSE;
 	}
 
-	bone->posX = parent_bone->lineX;
-	bone->posY = parent_bone->lineY;
-	bone->posZ = parent_bone->lineZ;
+	if (!pose) {	/* Are we applying a rotation to the base bone pos or the actual pose postion ? */
+		if (axis < 3) {
+			kudu_math_quat_apply_rotation(bone->lquat, axis, angle);
+		} else if ((axis > 2) && (axis < 6)) {
+			kudu_math_quat_apply_rotation(bone->gquat, axis-3, angle);
+		}
+
+	} else {
+
+		if (axis < 3) {
+			kudu_math_quat_apply_rotation(bone->lpquat, axis, angle);
+		}
+	}
+
+	return TRUE;
 }
 

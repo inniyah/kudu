@@ -26,6 +26,11 @@
 
 KuduImage *kudu_image_new(void);
 int kudu_image_destroy(KuduImage*);
+KuduImage *kudu_image_new_default(void);
+int kudu_image_print_formats(void);
+KuduImage *kudu_image_new_from_gdkpixbuf(GdkPixbuf*);
+KuduImage *kudu_image_new_via_gdkpixbuf(char*);
+KuduImage *kudu_image_new_autoload(char*);
 
 #endif /* IMAGE_H_INCLUDED */
 

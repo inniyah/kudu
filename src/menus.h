@@ -39,6 +39,7 @@
 #define NEW_TEAROFF(menu) (kudu_gui_menu_tearoff_new(menu))
 #define NEW_MENU(bar, label) (kudu_gui_menu_new(bar, label))
 
+gulong kudu_menu_last_signal_id(void);
 int kudu_menu_start_new(GtkAccelGroup*, GtkWidget*, char*, GCallback);
 GtkWidget *kudu_menu_end(void);
 GtkWidget *kudu_menu_push(char*);

@@ -100,6 +100,7 @@ KuduVertex *kudu_vertex_new(KuduObject *object, KuduVertex *previous_vertex)
 	vertex->flags = 0;
 	vertex->magic_normal = 0;
 	vertex->selected = FALSE;
+	vertex->num_bones = 0;
 
 	return vertex;
 }
@@ -275,6 +276,177 @@ KuduVertex *kudu_vertex_next_do(void)
 	return return_vertex;
 }
 
+/* Add a bone and it's influence value to a vertex's bone list */
+int kudu_vertex_add_bone(KuduVertex *vertex, KuduBone *bone, float influence)
+{
+	if ((vertex == NULL) || (bone == NULL)) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	/* This is the first bone to be added to this list */
+	if (vertex->num_bones == 0) {
+		vertex->bone = (KuduBone**)malloc(sizeof(KuduBone*));
+		vertex->influence = (float*)malloc(sizeof(float));
+		vertex->bone[0] = bone;
+		vertex->influence[0] = influence;
+		vertex->num_bones = 1;
+	} else {
+		vertex->num_bones++;
+		vertex->bone = (KuduBone**)realloc(vertex->bone, (sizeof(KuduBone*)*vertex->num_bones));
+		vertex->influence = (float*)realloc(vertex->influence, (sizeof(float)*vertex->num_bones));
+		vertex->bone[vertex->num_bones-1] = bone;
+		vertex->influence[vertex->num_bones-1] = influence;
+	}
+
+	return TRUE;
+}
+
+/* Remove a bone from a vertex's bone list */
+int kudu_vertex_remove_bone(KuduVertex *vertex, KuduBone *bone)
+{
+	if ((vertex == NULL) || (bone == NULL)) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	int a, found = FALSE;
+
+	if (vertex->num_bones <= 0) return FALSE;
+
+	for (a = 0; a < vertex->num_bones; a++) {
+		if (vertex->bone[a] == bone) {
+			found = TRUE;
+		}
+
+		/* If the bone has been found then simply slide all the other bones one down in the list */
+		if ((found) && ((a+1) < vertex->num_bones)) {
+			vertex->bone[a] = vertex->bone[a+1];
+			vertex->influence[a] = vertex->influence[a+1];
+		}
+	}
+
+	/* If the bone was found then decrease the size of the list by one */
+	if (found) {
+		vertex->num_bones--;
+		if (vertex->num_bones == 0) {
+			free(vertex->bone);
+			free(vertex->influence);
+			vertex->bone = NULL;
+			vertex->influence = NULL;
+		} else {
+			vertex->bone = (KuduBone**)realloc(vertex->bone, (sizeof(KuduBone*)*vertex->num_bones));
+			vertex->influence = (float*)realloc(vertex->influence, (sizeof(float)*vertex->num_bones));
+		}
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+/* Clear a vertex's bone list */
+int kudu_vertex_remove_all_bones(KuduVertex *vertex)
+{
+	if (vertex == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	if (vertex->num_bones > 0) {
+		free(vertex->bone);
+		free(vertex->influence);
+		vertex->bone = NULL;
+		vertex->influence = NULL;
+		vertex->num_bones = 0;
+	}
+
+	return TRUE;
+}
+
+
+/* Set the influence value of a bone to a vertex, if the bone is not already in the vertex's list 
+   then add it, if the influence value is 0 then remove it */
+int kudu_vertex_set_bone_influence(KuduVertex *vertex, KuduBone *bone, float influence)
+{
+	if ((vertex == NULL) || (bone == NULL)) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	int a, b = -1;
+
+	if (influence > 0.0) {
+		for (a = 0; a < vertex->num_bones; a++) {
+			if (vertex->bone[a] == bone) {
+				b = a;
+				a = vertex->num_bones;
+			}
+		}
+
+		if (b < 0) {
+			return kudu_vertex_add_bone(vertex, bone, influence);
+		}
+
+		vertex->influence[b] = influence;
+
+	} else {
+		return kudu_vertex_remove_bone(vertex, bone);
+	}
+
+	return TRUE;
+}
+
+/* Return the influence currently set for a bone, returns 0.0 if the bone has not been set at all */
+float kudu_vertex_get_bone_influence(KuduVertex *vertex, KuduBone *bone)
+{
+	if ((vertex == NULL) || (bone == NULL)) {
+		kudu_error(KE_OBJECT_INVALID);
+		return 0.0;
+	}
+
+	int a, b = -1;
+
+	for (a = 0; a < vertex->num_bones; a++) {
+		if (vertex->bone[a] == bone) {
+			b = a;
+			a = vertex->num_bones;
+		}
+	}
+
+	if (b >= 0) return vertex->influence[b];
+
+	return 0.0;
+}
+
+/* Print info on a vertice's attachment settings - for debug purposes */
+int kudu_vertex_print_attachments(KuduVertex *vertex)
+{
+	if (vertex == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	printf("Vertex %d attachment info:\n", vertex->id);
+
+	if (vertex->num_bones <= 0) {
+		printf("No attachments\n\n");
+		return TRUE;
+	}
+
+	int a;
+
+	for (a = 0; a < vertex->num_bones; a++) {
+		printf("Attachment %d: Bone: %d, influence: %4.2f\n", a, vertex->bone[a]->id, vertex->influence[a]);
+	}
+
+	printf("\n");
+
+	return TRUE;
+}
+
+/* Older function for attaching a vertex to a bone */
+/* Been modified to remain compatible.. old code is commented out, will remove this function at some time */
 int kudu_vertex_attach_to_bone(KuduVertex *vertex, KuduBone *bone)
 {
 	int a, b;
@@ -284,91 +456,110 @@ int kudu_vertex_attach_to_bone(KuduVertex *vertex, KuduBone *bone)
 	if (bone == NULL) return FALSE;
 
 	/*for (a = 0; a < 3; a++) vertex->ov[a] = vertex->v[a];*/
+	KuduJoint *joint = bone->e_joint;
 
-	vertex->bone = bone;
+	/*vertex->bone = bone;*/
+	kudu_vertex_add_bone(vertex, bone, 100.0);
 
-	x = (vertex->v[0]);
+	/*x = (vertex->v[0]);
 	y = (vertex->v[1]);
 	z = (vertex->v[2]);
 
-	x -= bone->lineX;
+	x -= joint->pos[0];
+	y -= joint->pos[1];
+	z -= joint->pos[2];*/
+	/*x -= bone->lineX;
 	y -= bone->lineY;
-	z -= bone->lineZ;
+	z -= bone->lineZ;*/
 
-	kudu_math_translate_vertex_inverse(&x, &y, &z, bone->matrix);
+	/*kudu_math_translate_vertex_inverse(&x, &y, &z, bone->matrix);
 
 	vertex->v[0] = x;
 	vertex->v[1] = y;
-	vertex->v[2] = z;
-	vertex->attached_percent = 100;
+	vertex->v[2] = z;*/
 
 	return TRUE;
 }
 
-int kudu_vertex_attach_to_bone_by_percent(KuduVertex *vertex, KuduBone *bone, GLubyte percent)
+/* Older function for attaching a vertex to a bone with an influence varible */
+/* Been modified to remain compatible.. old code is commented out, will remove this function at some time */
+int kudu_vertex_attach_to_bone_by_percent(KuduVertex *vertex, KuduBone *bone, unsigned char percent)
 {
 	int a, b;
 	float x, y, z;
-	KuduBone temp_bone;
+	KuduBone *temp_bone;
 
 	if (vertex == NULL) return FALSE;
 	if (bone == NULL) return FALSE;
 
 /*	temp_bone = kudu_bone_new_with_id(NULL, 0);
 	if (temp_bone == NULL) return FALSE;*/
+	temp_bone = kudu_bone_new(bone->object);
+	if (temp_bone == NULL) return FALSE;
+	KuduJoint *joint = temp_bone->e_joint;
 
 	if (percent > 100) percent = 100;
 
-	vertex->bone = bone;
+	kudu_vertex_add_bone(vertex, bone, (float)percent);
+	/*vertex->bone = bone;*/
 	vertex->attached_percent = percent;
 
-	x = (vertex->v[0]);
+/*	x = (vertex->v[0]);
 	y = (vertex->v[1]);
 	z = (vertex->v[2]);
 
-	kudu_bone_joint_by_percent(bone, &temp_bone, vertex->attached_percent);
+	kudu_bone_joint_by_percent(bone, temp_bone, vertex->attached_percent);
 
-	x -= temp_bone.lineX;
+	x -= joint->pos[0];
+	y -= joint->pos[1];
+	z -= joint->pos[2];*/
+/*	x -= temp_bone.lineX;
 	y -= temp_bone.lineY;
-	z -= temp_bone.lineZ;
+	z -= temp_bone.lineZ;*/
 
-	kudu_math_translate_vertex_inverse(&x, &y, &z, temp_bone.matrix);
+/*	kudu_math_translate_vertex_inverse(&x, &y, &z, temp_bone->matrix);
 
 	vertex->v[0] = x;
 	vertex->v[1] = y;
 	vertex->v[2] = z;
-
-	/*kudu_bone_destroy(temp_bone);*/
+*/
+	kudu_bone_destroy(temp_bone);
 
 	return TRUE;
 }
 
-
+/* Older function for removing a vertice's attachment to a bone */
+/* Been modified to remain compatible.. old code is commented out, will remove this function at some time */
 int kudu_vertex_detach(KuduVertex *vertex)
 {
 	int a;
 	float x, y, z;
-	KuduBone temp_bone;
+	KuduBone *temp_bone;
 
 	if (vertex == NULL) return FALSE;
 	if (vertex->bone == NULL) return FALSE;
 
 	/*temp_bone = kudu_bone_new_with_id(NULL, 0);
 	if (temp_bone == NULL) return FALSE;*/
+	/*temp_bone = kudu_bone_new(vertex->bone->object);
+	KuduJoint *joint = temp_bone->e_joint;
 
-	kudu_bone_joint_by_percent(vertex->bone, &temp_bone, vertex->attached_percent);
+	kudu_bone_joint_by_percent(vertex->bone, temp_bone, vertex->attached_percent);
 
 	x = vertex->v[0];
 	y = vertex->v[1];
 	z = vertex->v[2];
 
-	kudu_math_translate_vertex(&x, &y, &z, temp_bone.matrix);
+	kudu_math_translate_vertex(&x, &y, &z, temp_bone->matrix);
 
-	vertex->v[0] = x + temp_bone.lineX;
+	vertex->v[0] = x + joint->pos[0];
+	vertex->v[1] = y + joint->pos[1];
+	vertex->v[2] = z + joint->pos[2];*/
+/*	vertex->v[0] = x + temp_bone.lineX;
 	vertex->v[1] = y + temp_bone.lineY;
-	vertex->v[2] = z + temp_bone.lineZ;
+	vertex->v[2] = z + temp_bone.lineZ;*/
 
-	vertex->bone = NULL;
+/*	vertex->bone = NULL;*/
 	vertex->attached_percent = 100;
 
 	/*kudu_bone_destroy(temp_bone);*/
@@ -376,6 +567,7 @@ int kudu_vertex_detach(KuduVertex *vertex)
 	return TRUE;
 }
 
+/* Update vertex position info, in editor mode won't have much effect, in animator mode will be deformed by attached bones (if any) */
 int kudu_vertex_update(KuduVertex *vertex)
 {
 	if (vertex == NULL) {
@@ -383,32 +575,48 @@ int kudu_vertex_update(KuduVertex *vertex)
 		return FALSE;
 	}
 
-	KuduBone *bone, temp_bone;
-	int a;
+	KuduBone *bone;
+	KuduJoint *joint;
+	int a, b, pose;
+	float weight, total_weight = 0.0, v[3];
 
-	/* Start with initial vertex position */
-	for (a = 0; a < 3; a++) vertex->av[a] = vertex->v[a];
+	if (program.mode == PROGRAM_MODE_EDIT) pose = FALSE;
+	else if (program.mode == PROGRAM_MODE_ANIMATION) pose = TRUE;
 
-	/* Transform the vertex with its bone matrix */
-	if ((bone = vertex->bone) != NULL) {
-		if (vertex->attached_percent < 100) {	/* Not 100% attached, calculate a new matrix */
-			kudu_bone_joint_by_percent(bone, &temp_bone, vertex->attached_percent);
-			kudu_math_translate_vertex(&vertex->av[0], &vertex->av[1], &vertex->av[2], temp_bone.matrix);
+	/* Transform the vertex with its bone matrices */
+	if ((vertex->bone != NULL) && (pose)) {
 
-			vertex->av[0] += temp_bone.lineX;
-			vertex->av[1] += temp_bone.lineY;
-			vertex->av[2] += temp_bone.lineZ;
-		} else {	/* 100% attached, just use the bone matrix */
-			kudu_math_translate_vertex(&vertex->av[0], &vertex->av[1], &vertex->av[2], bone->matrix);
-
-			vertex->av[0] += bone->lineX;
-			vertex->av[1] += bone->lineY;
-			vertex->av[2] += bone->lineZ;
+		/* Start with 0 */
+		for (a = 0; a < 3; a++)	{
+			vertex->av[a] = 0.0;
 		}
-	}
+
+		for (b = 0; b < vertex->num_bones; b++) {
+			bone = vertex->bone[b];
+			joint = bone->s_joint;
+			weight = (vertex->influence[b] / 100.0F);
+			total_weight += weight;
+
+			for (a = 0; a < 3; a++) v[a] = vertex->v[a] - joint->pos[a];// * weight);
+
+			/*if (bone->parent == NULL) for (a = 0; a < 3; a++) v[a] -= joint->pos[a];*/
+
+			kudu_math_transform_vertex3v_by_matrix_transpose(v, bone->matrix);
+
+			kudu_math_transform_vertex3v_by_matrix(v, bone->pmatrix);
+
+			//for (a = 0; a < 3; a++) vertex->av[a] += joint->ppos[a];
+
+			if (bone->parent != NULL) for (a = 0; a < 3; a++) vertex->av[a] += (v[a] * weight) + (joint->ppos[a] * weight);
+			else	 for (a = 0; a < 3; a++) vertex->av[a] += (v[a] * weight) + ((joint->ppos[a] + joint->pos[a]) * weight);
+		}
+
+		if (total_weight > 0.0) for (a = 0; a < 3; a++) vertex->av[a] /= total_weight;
+
+	} else for (a = 0; a < 3; a++) vertex->av[a] = vertex->v[a];
 
 	/* Add the vertex offset */
-	for (a = 0; a < 3; a++) vertex->av[a] += vertex->ov[a];
+	/*for (a = 0; a < 3; a++) vertex->av[a] += vertex->ov[a];*/
 	return TRUE;
 }
 
@@ -471,9 +679,14 @@ int kudu_vertex_smart_update_vertices(KuduVertex *vertex)
 				else	current_vertex = current_vertex->previous_vertex;
 			}
 
-			bone = current_vertex->bone;
-			if (bone != NULL) {
-				if (bone->selected) kudu_vertex_update(current_vertex);
+			for (a = 0; a < current_vertex->num_bones; a++)	{
+				bone = current_vertex->bone[a];
+				if (bone != NULL) {
+					if (bone->selected) {
+						kudu_vertex_update(current_vertex);
+						a = current_vertex->num_bones;
+					}
+				}
 			}
 
 			if (!parse_backwards) {

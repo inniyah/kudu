@@ -21,10 +21,10 @@
 /******************************************************************************/
 #include "texture.h"
 
-static int TEX_ID = 1;
-
-KuduTexture *kudu_texture_new(KuduTexture *previous_texture)
+KuduTexture *kudu_texture_new(KuduObject *object, KuduTexture *previous_texture)
 {
+	if (object == NULL) return NULL;
+
 	KuduTexture *tex, *old_next_tex;
 
 	tex = (KuduTexture*)malloc(sizeof(KuduTexture));
@@ -42,10 +42,11 @@ KuduTexture *kudu_texture_new(KuduTexture *previous_texture)
 		if (old_next_tex != NULL) old_next_tex->previous_texture = tex;
 	}
 
-	tex->id = TEX_ID++;
+	tex->id = object->next_texture_id++;
 	tex->tex = 0;
 	tex->width = 0;
 	tex->height = 0;
+	tex->image = NULL;
 
 	return tex;
 }
@@ -85,6 +86,10 @@ int kudu_texture_assign_image(KuduTexture *tex, KuduImage *image)
 		tex->tex = 0;
 	}
 
+	tex->image = image;
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 	glGenTextures(1, &tex->tex);
 	glBindTexture(GL_TEXTURE_2D, tex->tex);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -100,7 +105,21 @@ int kudu_texture_assign_image(KuduTexture *tex, KuduImage *image)
 	return TRUE;
 }
 
+KuduTexture *kudu_texture_new_autoload_image(KuduObject *object, KuduTexture *previous_texture, char *filename)
+{
+	if ((object == NULL) || (filename == NULL)) return NULL;
+	KuduTexture *texture;
+	KuduImage *image;
 
+	texture = kudu_texture_new(object, previous_texture);
+	if (texture == NULL) return NULL;
+
+	image = kudu_image_new_autoload(filename);
+
+	if (image != NULL) kudu_texture_assign_image(texture, image);
+
+	return texture;
+}
 
 
 

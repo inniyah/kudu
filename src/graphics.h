@@ -26,6 +26,8 @@
 #include "font.h"
 #include "utils.h"
 #include "texture.h"
+#include "wingedge.h"
+#include "joints.h"
 #include "bones.h"
 #include "options.h"
 
@@ -44,6 +46,8 @@ void kudu_draw_axes(void);
 int kudu_draw_axes_labels(KuduCamera*);
 int kudu_draw_grid(int, int, float, int);
 void kudu_draw_block(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLenum);
+int kudu_draw_joint(KuduJoint*, int, float*, float*);
+int kudu_draw_all_joints(KuduJoint*, int);
 int kudu_draw_bone(KuduBone*, int);
 int kudu_draw_all_bones(KuduBone*, int);
 /*void kudu_draw_terrain(K_TERRAIN*, K_TEXTURE_LIST*, GLint);*/

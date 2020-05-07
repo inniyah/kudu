@@ -46,6 +46,7 @@ int kudu_menu_store_item(K_MainMenu item, GtkWidget *widget)
 	KuduMenu *menu = &k_menu[item];
 
 	menu->menu_item = widget;
+	menu->signal = kudu_menu_last_signal_id();
 
 	return TRUE;
 }
@@ -105,6 +106,21 @@ int kudu_menu_item_activate(K_MainMenu item)
 	return TRUE;
 }
 
+int kudu_menu_item_activate_no_call(K_MainMenu item)
+{
+	if ((k_menu == NULL) || (item > KM_NUM_ITEMS)) return FALSE;
+
+	KuduMenu *menu = &k_menu[item];
+
+	if (menu->menu_item != NULL) {
+		g_signal_handler_block(menu->menu_item, menu->signal);
+		gtk_widget_activate(menu->menu_item);
+		g_signal_handler_unblock(menu->menu_item, menu->signal);
+	}
+
+	return TRUE;
+}
+
 int kudu_menu_check_item_set_state(K_MainMenu item, int state)
 {
 	if ((k_menu == NULL) || (item > KM_NUM_ITEMS)) return FALSE;
@@ -112,6 +128,21 @@ int kudu_menu_check_item_set_state(K_MainMenu item, int state)
 	KuduMenu *menu = &k_menu[item];
 
 	if (menu->menu_item != NULL) gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu->menu_item), (gboolean)state);
+
+	return TRUE;
+}
+
+int kudu_menu_check_item_set_state_no_call(K_MainMenu item, int state)
+{
+	if ((k_menu == NULL) || (item > KM_NUM_ITEMS)) return FALSE;
+
+	KuduMenu *menu = &k_menu[item];
+
+	if (menu->menu_item != NULL) {
+		g_signal_handler_block(menu->menu_item, menu->signal);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menu->menu_item), (gboolean)state);
+		g_signal_handler_unblock(menu->menu_item, menu->signal);
+	}
 
 	return TRUE;
 }
@@ -156,6 +187,7 @@ GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow *window, GtkAccelGroup *accel_
 	kudu_menu_add_separator();
 		KM_MENU("Import", KM_FILE_IMPORT);
 		KM_ITEM("Renderware (.rwx)", KM_FILE_IMPORT_RWX, NULL);
+		KM_ITEM("Wavefront (.obj)", KM_FILE_IMPORT_OBJ, NULL);
 		kudu_menu_pop();
 	kudu_menu_add_separator();
 	KM_ITEM("Exit Kudu", KM_FILE_EXIT, "<ctrl>q");
@@ -172,16 +204,28 @@ GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow *window, GtkAccelGroup *accel_
 		KM_ITEM("Insert Parent", KM_EDIT_BONES_INSERT_PARENT, "I");
 		KM_ITEM("Delete", KM_EDIT_BONES_DELETE, "D");
 		KM_SEPARATOR(KM_EDIT_BONES_SEP2);
-		KM_ITEM("Adjust H-Angle", KM_EDIT_BONES_HANGLE, "1");
-		KM_ITEM("Adjust V-Angle", KM_EDIT_BONES_VANGLE, "2");
-		KM_ITEM("Rotate Bone", KM_EDIT_BONES_RANGLE, "3");
-		KM_ITEM("Stretch Bone", KM_EDIT_BONES_LENGTH, "4");
+		KM_ITEM("Rotate about local X", KM_EDIT_BONES_ROT_LX, "1");
+		KM_ITEM("Rotate about local Y", KM_EDIT_BONES_ROT_LY, "2");
+		KM_ITEM("Rotate about local Z", KM_EDIT_BONES_ROT_LZ, "3");
+		kudu_menu_add_separator();
+		KM_ITEM("Rotate about global X", KM_EDIT_BONES_ROT_GX, NULL);
+		KM_ITEM("Rotate about global Y", KM_EDIT_BONES_ROT_GY, NULL);
+		KM_ITEM("Rotate about global Z", KM_EDIT_BONES_ROT_GZ, NULL);
+		kudu_menu_add_separator();
+		KM_ITEM("Rotate Bone", KM_EDIT_BONES_ROTATE, "4");
+		KM_ITEM("Stretch Bone", KM_EDIT_BONES_STRETCH, "5");
 		kudu_menu_add_separator();
 		KM_ITEM("Move X", KM_EDIT_BONES_MOVE_X, NULL);
 		KM_ITEM("Move Y", KM_EDIT_BONES_MOVE_Y, NULL);
 		KM_ITEM("Move Z", KM_EDIT_BONES_MOVE_Z, NULL);
 		kudu_menu_add_separator();
 		KM_ITEM("Properties Dialog", KM_EDIT_BONES_PROPERTIES, "<ctr>P");
+		kudu_menu_pop();
+
+		KM_MENU("Joints", KM_EDIT_JOINTS);
+		KM_ITEM("Move X", KM_EDIT_JOINTS_MOVE_X, NULL);
+		KM_ITEM("Move Y", KM_EDIT_JOINTS_MOVE_Y, NULL);
+		KM_ITEM("Move Z", KM_EDIT_JOINTS_MOVE_Z, NULL);
 		kudu_menu_pop();
 
 		KM_MENU("Attachments", KM_EDIT_ATTACHMENTS);
@@ -342,6 +386,7 @@ GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow *window, GtkAccelGroup *accel_
 
 		kudu_menu_push("Skeleton Detail");
 		KM_CHECK("Show Bones", KM_PROGRAM_BONES_SHOW, NULL);
+		KM_CHECK("Show Joints", KM_PROGRAM_BONES_SHOW_JOINTS, NULL);
 		kudu_menu_add_separator();
 		kudu_menu_new_radio_group();
 		KM_RADIO("Show All Bone Names", KM_PROGRAM_BONES_SHOW_NAMES, NULL);
@@ -359,6 +404,7 @@ GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow *window, GtkAccelGroup *accel_
 		KM_CHECK("Smooth Shading", KM_PROGRAM_SKIN_SMOOTH, NULL);
 		KM_CHECK("Lighting", KM_PROGRAM_SKIN_LIT, NULL);
 		KM_CHECK("Real Colours", KM_PROGRAM_SKIN_REAL_COLOURS, NULL);
+		KM_CHECK("Textured", KM_PROGRAM_SKIN_TEXTURED, NULL);
 		kudu_menu_add_separator();
 		kudu_menu_new_radio_group();
 		KM_RADIO("Vertex Skin", KM_PROGRAM_SKIN_VERTEX, NULL);

@@ -143,10 +143,10 @@ gint kudu_program_exit(GtkWidget *widget, gpointer data)
 		#endif
 
 		gtk_widget_destroy(mdialog);
-		if (GTK_IS_WIDGET(data))
-			gtk_widget_destroy(GTK_WIDGET(data));
+		//if (GTK_IS_WIDGET(data)) gtk_widget_destroy(GTK_WIDGET(data));
+		gtk_widget_destroy(main_win);
 		gtk_main_quit();
-		return TRUE;
+		return FALSE;
 	}
 }
 
@@ -185,7 +185,7 @@ void kudu_program_request_save_kudu_object(void)
 
 	if (ns) {
 		file_selection = kudu_gui_save_dialog("Save a Kudu Object", "Kudu Animated Objects", "*.kudu",
-			"untitled.dan");
+			"untitled.kudu");
 	} else {
 		file_selection = kudu_gui_save_dialog("Save a Kudu Object", "Kudu Animated Objects", "*.kudu",
 			program.selected_object->filename);
@@ -280,27 +280,77 @@ void kudu_program_import_rwx(void)
 	gtk_widget_destroy(file_selection);
 }
 
-
-void kudu_program_edit_mode_set(int MODE)
+void kudu_program_import_obj(void)
 {
-	program.edit_mode = MODE;
+	GtkWidget *file_selection;
+	gchar *selected_filename;
+	KuduObject *new_obj;
+
+	file_selection = kudu_gui_open_dialog("Import a Wavefront (obj) Object", "Wavefront Objects", "*.obj");
+
+	switch (gtk_dialog_run(GTK_DIALOG(file_selection))) {
+		case GTK_RESPONSE_ACCEPT:
+			selected_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(file_selection));
+
+			if ((new_obj = kudu_object_new_with_defaults(object)) == NULL) return;
+
+			if (kudu_object_import_obj_from_file(new_obj, selected_filename)) {
+				kudu_gui_objects_menu_add(new_obj, G_CALLBACK(kudu_program_object_select));
+				program.selected_object = new_obj;
+				if (object == NULL) object = new_obj;
+			} else {
+				kudu_object_destroy(new_obj);
+			}
+
+			g_free(selected_filename);
+
+			kudu_program_skin_list_regen();
+			break;
+	}
+
+	gtk_widget_destroy(file_selection);
+}
+
+void kudu_program_edit_mode_set(int mode)
+{
+	program.edit_mode = mode;
+
+	if (mode == EDIT_MODE_NONE) return;
+
+	kudu_skin_edit_anchor();
 
 }
 
-int kudu_program_selection_mode_set(int MODE)
+int kudu_program_selection_mode_set(int MODE, int regen)
 {
-	if (program.selection_mode == MODE) return TRUE;
+	/*if (program.selection_mode == MODE) return TRUE;*/
+/*	if (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no) == MODE) return TRUE;*/
 
 	/*program.selection_mode = MODE;*/
 
 	kudu_options_set_int_no(KO_SELECTION_MODE, program.mode_opt_no, MODE);
 
-	kudu_selection_list_set_type(selection_list, MODE, TRUE);
+	if ((MODE > S_MESH) && (MODE < E_MESH)) {
+		kudu_selection_list_set_type(selection_list, MODE, TRUE);
+	} else {
+		kudu_selection_list_set_type(selected_bones_list, MODE, TRUE);
+	}
 
 	/* Configure various menu items and stuff according to selection mode */
-	/* Only if we are in animation mode, in editor mode the menu layout is */
-	/* determined only by the sub-mode */
-	if (program.mode == PROGRAM_MODE_ANIMATION) {
+	if (program.mode == PROGRAM_MODE_EDIT) {
+
+		switch (MODE) {
+			case SELECT_BONES:
+				kudu_menu_item_set_visible(KM_EDIT_BONES, TRUE);
+				kudu_menu_item_set_visible(KM_EDIT_JOINTS, FALSE);
+				break;
+			case SELECT_JOINTS:
+				kudu_menu_item_set_visible(KM_EDIT_BONES, FALSE);
+				kudu_menu_item_set_visible(KM_EDIT_JOINTS, TRUE);
+				break;
+		}
+
+	} else if (program.mode == PROGRAM_MODE_ANIMATION) {
 
 		/* Set up menu items as most commonly used first */
 		/* then individual selection modes need just adjust the differences */
@@ -315,6 +365,10 @@ int kudu_program_selection_mode_set(int MODE)
 				kudu_menu_item_set_visible(KM_EDIT_BONES, TRUE);
 				kudu_menu_item_set_visible(KM_EDIT_SKIN, FALSE);
 				break;
+			case SELECT_JOINTS:
+				kudu_menu_item_set_visible(KM_EDIT_BONES, FALSE);
+				kudu_menu_item_set_visible(KM_EDIT_SKIN, FALSE);
+				break;
 			case SELECT_POINTS:
 				break;
 			case SELECT_EDGES:
@@ -326,7 +380,8 @@ int kudu_program_selection_mode_set(int MODE)
 		}
 	}
 
-	kudu_program_skin_list_regen();
+	kudu_program_skeleton_list_regen();
+	if (regen) kudu_program_skin_list_regen();
 
 	return TRUE;
 }
@@ -358,6 +413,10 @@ int kudu_program_set_mode(int mode)
 	program.sub_mode = -1;
 	kudu_program_set_sub_mode(PROGRAM_MODE_SKELETON);
 
+	kudu_object_update(program.selected_object);
+	kudu_program_skin_list_regen();
+	kudu_program_skeleton_list_regen();
+
 	return TRUE;
 }
 
@@ -381,42 +440,43 @@ int kudu_program_set_sub_mode(int MODE)
 		glDisable(GL_BLEND);
 	}
 
-	item = STACK_GET_WIDGET("show_bones");
-	a = kudu_options_get_int_no(KO_BONES_VISIBLE, program.mode_opt_no);
-	if (item != NULL) gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), (gboolean)a);
-
 	switch (kudu_options_get_int_no(KO_BONES_DETAIL, program.mode_opt_no)) {
 		case SKELETON_DETAIL_SHOW_ALL:
-			kudu_menu_item_activate(KM_PROGRAM_BONES_SHOW_NAMES);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_NAMES);
 			break;
 		case SKELETON_DETAIL_SHOW_SELECTED:
-			kudu_menu_item_activate(KM_PROGRAM_BONES_SHOW_SELECTED_NAMES);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_SELECTED_NAMES);
 			break;
 		case SKELETON_DETAIL_SHOW_NONE:
-			kudu_menu_item_activate(KM_PROGRAM_BONES_HIDE_NAMES);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_HIDE_NAMES);
 			break;
 	}
 
 	switch(kudu_options_get_int_no(KO_BONES_AXES, program.mode_opt_no)) {
 		case SKELETON_DETAIL_SHOW_ALL:
-			kudu_menu_item_activate(KM_PROGRAM_BONES_SHOW_AXES);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_AXES);
 			break;
 		case SKELETON_DETAIL_SHOW_SELECTED:
-			kudu_menu_item_activate(KM_PROGRAM_BONES_SHOW_SELECTED_AXES);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_SHOW_SELECTED_AXES);
 			break;
 		case SKELETON_DETAIL_SHOW_NONE:
-			kudu_menu_item_activate(KM_PROGRAM_BONES_HIDE_AXES);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_BONES_HIDE_AXES);
 			break;
 	}
 
+	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_BONES_SHOW, kudu_options_get_int_no(KO_BONES_VISIBLE, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state(KM_PROGRAM_SKIN_SHOW, kudu_options_get_int_no(KO_SKIN_VISIBLE, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_BONES_SHOW_JOINTS, kudu_options_get_int_no(KO_JOINTS_VISIBLE, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state(KM_PROGRAM_SKIN_LIT, kudu_options_get_int_no(KO_SKIN_LIT, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_SHOW, kudu_options_get_int_no(KO_SKIN_VISIBLE, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state(KM_PROGRAM_SKIN_SMOOTH, kudu_options_get_int_no(KO_SKIN_SMOOTH, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_LIT, kudu_options_get_int_no(KO_SKIN_LIT, program.mode_opt_no));
 
-	kudu_menu_check_item_set_state(KM_PROGRAM_SKIN_REAL_COLOURS, kudu_options_get_int_no(KO_SKIN_REAL_COLOURS, program.mode_opt_no));
+	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_SMOOTH, kudu_options_get_int_no(KO_SKIN_SMOOTH, program.mode_opt_no));
+
+	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_REAL_COLOURS, kudu_options_get_int_no(KO_SKIN_REAL_COLOURS, program.mode_opt_no));
+
+	kudu_menu_check_item_set_state_no_call(KM_PROGRAM_SKIN_TEXTURED, kudu_options_get_int_no(KO_SKIN_TEXTURED, program.mode_opt_no));
 
 	a = kudu_options_get_int_no(KO_VIEW_ORTHOGRAPHIC, program.mode_opt_no);
 	kudu_menu_check_item_set_state(KM_VIEW_ORTHOGRAPHIC, a);
@@ -424,38 +484,39 @@ int kudu_program_set_sub_mode(int MODE)
 
 	switch (kudu_options_get_int_no(KO_SKIN_DETAIL, program.mode_opt_no)) {
 		case K_RENDER_POINTS:
-			kudu_menu_item_activate(KM_PROGRAM_SKIN_VERTEX);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_SKIN_VERTEX);
 			break;
 		case K_RENDER_EDGES:
-			kudu_menu_item_activate(KM_PROGRAM_SKIN_EDGE);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_SKIN_EDGE);
 			break;
 		case K_RENDER_FACES:
-			kudu_menu_item_activate(KM_PROGRAM_SKIN_FACE);
+			kudu_menu_item_activate_no_call(KM_PROGRAM_SKIN_FACE);
 			break;
 	}
 
-	item = NULL;
 	switch (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no)) {
 		case SELECT_OBJECTS:
-			item = (GtkWidget*)kudu_toolbar_get_item(KT_SELECT_OBJECTS);
+			kudu_toolbar_toggle_item_set_active_no_call(KT_SELECT_OBJECTS, TRUE);
 			break;
 		case SELECT_BONES:
-			item = (GtkWidget*)kudu_toolbar_get_item(KT_SELECT_BONES);
+			kudu_toolbar_toggle_item_set_active_no_call(KT_SELECT_BONES, TRUE);
+			break;
+		case SELECT_JOINTS:
+			kudu_toolbar_toggle_item_set_active_no_call(KT_SELECT_JOINTS, TRUE);
 			break;
 		case SELECT_POINTS:
-			item = (GtkWidget*)kudu_toolbar_get_item(KT_SELECT_VERTICES);
+			kudu_toolbar_toggle_item_set_active_no_call(KT_SELECT_VERTICES, TRUE);
 			break;
 		case SELECT_EDGES:
-			item = (GtkWidget*)kudu_toolbar_get_item(KT_SELECT_EDGES);
+			kudu_toolbar_toggle_item_set_active_no_call(KT_SELECT_EDGES, TRUE);
 			break;
 		case SELECT_FACES:
-			item = (GtkWidget*)kudu_toolbar_get_item(KT_SELECT_FACES);
+			kudu_toolbar_toggle_item_set_active_no_call(KT_SELECT_FACES, TRUE);
 			break;
 		case SELECT_SHAPES:
-			item = (GtkWidget*)kudu_toolbar_get_item(KT_SELECT_SHAPES);
+			kudu_toolbar_toggle_item_set_active_no_call(KT_SELECT_SHAPES, TRUE);
 			break;
 	}
-	if (item != NULL) gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(item), TRUE);
 
 
 	/* Control various aspects of the menu layout depending on the mode/sub-mode */
@@ -507,6 +568,7 @@ int kudu_program_set_sub_mode(int MODE)
 		switch (program.sub_mode) {	/* sub mode specific layout control here */
 			case PROGRAM_MODE_SKELETON:
 				kudu_toolbar_item_enable(KT_SELECT_BONES);
+				kudu_toolbar_item_enable(KT_SELECT_JOINTS);
 
 				kudu_toolbar_item_disable(KT_SELECT_VERTICES);
 				kudu_toolbar_item_disable(KT_SELECT_EDGES);
@@ -518,6 +580,7 @@ int kudu_program_set_sub_mode(int MODE)
 				break;
 			case PROGRAM_MODE_SKIN:
 				kudu_toolbar_item_disable(KT_SELECT_BONES);
+				kudu_toolbar_item_disable(KT_SELECT_JOINTS);
 
 				kudu_toolbar_item_enable(KT_SELECT_VERTICES);
 				kudu_toolbar_item_enable(KT_SELECT_EDGES);
@@ -527,7 +590,8 @@ int kudu_program_set_sub_mode(int MODE)
 				kudu_menu_item_set_visible(KM_EDIT_SKIN, TRUE);
 				break;
 			case PROGRAM_MODE_ATTACH:
-				kudu_toolbar_item_disable(KT_SELECT_BONES);
+				kudu_toolbar_item_enable(KT_SELECT_BONES);
+				kudu_toolbar_item_disable(KT_SELECT_JOINTS);
 
 				kudu_toolbar_item_enable(KT_SELECT_VERTICES);
 				kudu_toolbar_item_enable(KT_SELECT_EDGES);
@@ -539,6 +603,7 @@ int kudu_program_set_sub_mode(int MODE)
 				break;
 			case PROGRAM_MODE_VIEW:
 				kudu_toolbar_item_disable(KT_SELECT_BONES);
+				kudu_toolbar_item_disable(KT_SELECT_JOINTS);
 
 				kudu_toolbar_item_disable(KT_SELECT_VERTICES);
 				kudu_toolbar_item_disable(KT_SELECT_EDGES);
@@ -571,6 +636,7 @@ int kudu_program_set_sub_mode(int MODE)
 		/* Selection modes are available in all sub-modes except playback */
 		/* enable them now and we'll disable them again in playback sub-mode */
 		kudu_toolbar_item_enable(KT_SELECT_OBJECTS);
+		kudu_toolbar_item_enable(KT_SELECT_JOINTS);
 		kudu_toolbar_item_enable(KT_SELECT_BONES);
 		kudu_toolbar_item_enable(KT_SELECT_VERTICES);
 		kudu_toolbar_item_enable(KT_SELECT_EDGES);
@@ -600,6 +666,7 @@ int kudu_program_set_sub_mode(int MODE)
 			case PROGRAM_MODE_PLAYBACK:
 				kudu_toolbar_item_disable(KT_SELECT_OBJECTS);
 				kudu_toolbar_item_disable(KT_SELECT_BONES);
+				kudu_toolbar_item_disable(KT_SELECT_JOINTS);
 				kudu_toolbar_item_disable(KT_SELECT_VERTICES);
 				kudu_toolbar_item_disable(KT_SELECT_EDGES);
 				kudu_toolbar_item_disable(KT_SELECT_FACES);
@@ -619,7 +686,7 @@ int kudu_program_set_sub_mode(int MODE)
 		}
 	}
 
-	kudu_program_selection_mode_set(kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no));
+	kudu_program_selection_mode_set(kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no), FALSE);
 
 	kudu_program_skin_list_regen();
 	kudu_program_skeleton_list_regen();
@@ -628,6 +695,8 @@ int kudu_program_set_sub_mode(int MODE)
 int kudu_program_bone_mode_set(int MODE)
 {
 	if (camera->mode != CAMERA_MODE_FIXED) return FALSE;
+
+	if (selected_bones_list->type != SELECT_BONES) return FALSE;
 
 	if ((!kudu_selection_list_anything_selected(selected_bones_list)) && (MODE != BONE_MODE_FIXED)) {
 		kudu_gui_message("Please select at least one bone!", GTK_MESSAGE_INFO);
@@ -654,6 +723,32 @@ int kudu_program_bone_mode_set(int MODE)
 	kudu_bones_edit_anchor(selected_bones_list, MODE);
 
 	program.offset[0] = 0.0;
+
+	return TRUE;
+}
+
+int kudu_program_joint_mode_set(int mode)
+{
+	if (camera->mode != CAMERA_MODE_FIXED) return FALSE;
+
+	if (selected_bones_list->type != SELECT_JOINTS) return FALSE;
+
+	if ((!kudu_selection_list_anything_selected(selected_bones_list)) && (mode != JOINT_MODE_FIXED)) {
+		kudu_gui_message("Please select at least one joint!", GTK_MESSAGE_INFO);
+		return FALSE;
+	}
+
+	if (mode != JOINT_MODE_FIXED) {
+		kudu_gui_save_pointer();
+		kudu_gui_hide_cursor();
+	} else {
+		kudu_gui_restore_pointer();
+		kudu_gui_show_cursor();
+	}
+
+	program.joint_mode = mode;
+
+	kudu_joints_edit_anchor(selected_bones_list, mode);
 
 	return TRUE;
 }
@@ -759,13 +854,17 @@ static int kudu_program_run_animation(int frame)
 	return FALSE;
 }
 
-static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
+static void main_menu_action(GtkWidget *menu_item, gpointer callback_action)
 {
-	int a, tmp;
+	int a, tmp, key = GPOINTER_TO_INT(callback_action);
 	float f[3];
 	KuduBone *temp_bone, *current_bone;
 
-	switch (callback_action) {
+	if GTK_IS_RADIO_MENU_ITEM(menu_item) {
+		if (!gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item))) return;
+	}
+
+	switch (key) {
 		/* File menu */
 		case KM_FILE_NEW:
 			kudu_program_new();
@@ -790,6 +889,10 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 		case KM_FILE_IMPORT_RWX:
 			kudu_program_import_rwx();
 			break;
+		case KM_FILE_IMPORT_OBJ:
+			kudu_program_import_obj();
+			break;
+
 
 		/* Edit menu */
 		case KM_EDIT_BONES_ADD_CHILD:
@@ -814,22 +917,43 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 				program.selected_object->bone = kudu_bone_new(program.selected_object);
 				kudu_bone_update(program.selected_object->bone);
 			} else {
-				kudu_bone_update(kudu_bone_add_sibling(program.selected_object, program.selected_object->bone));
+				kudu_bone_update(kudu_bone_add_sibling(program.selected_object->bone));
 			}
 			kudu_program_skeleton_list_regen();
 			break;
-		case KM_EDIT_BONES_HANGLE:
+		/*case KM_EDIT_BONES_HANGLE:
 			kudu_program_bone_mode_set(BONE_MODE_H_ANGLE);
 			break;
 		case KM_EDIT_BONES_VANGLE:
 			kudu_program_bone_mode_set(BONE_MODE_V_ANGLE);
+			break;*/
+		case KM_EDIT_BONES_ROTATE:
+			kudu_program_bone_mode_set(BONE_MODE_ROTATE);
 			break;
-		case KM_EDIT_BONES_RANGLE:
-			kudu_program_bone_mode_set(BONE_MODE_R_ANGLE);
-			break;
-		case KM_EDIT_BONES_LENGTH:
+		case KM_EDIT_BONES_STRETCH:
 			kudu_program_bone_mode_set(BONE_MODE_STRETCH);
 			break;
+		/* Bone rotations about the local axes */
+		case KM_EDIT_BONES_ROT_LX:
+			kudu_program_bone_mode_set(BONE_MODE_ROT_LX);
+			break;
+		case KM_EDIT_BONES_ROT_LY:
+			kudu_program_bone_mode_set(BONE_MODE_ROT_LY);
+			break;
+		case KM_EDIT_BONES_ROT_LZ:
+			kudu_program_bone_mode_set(BONE_MODE_ROT_LZ);
+			break;
+		/* Bone rotations about the global axes */
+		case KM_EDIT_BONES_ROT_GX:
+			kudu_program_bone_mode_set(BONE_MODE_ROT_GX);
+			break;
+		case KM_EDIT_BONES_ROT_GY:
+			kudu_program_bone_mode_set(BONE_MODE_ROT_GY);
+			break;
+		case KM_EDIT_BONES_ROT_GZ:
+			kudu_program_bone_mode_set(BONE_MODE_ROT_GZ);
+			break;
+		/* Bone shift's along global axis */
 		case KM_EDIT_BONES_MOVE_X:
 			kudu_program_bone_mode_set(BONE_MODE_MOVEX);
 			break;
@@ -849,8 +973,18 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 			}
 			break;
 
+		case KM_EDIT_JOINTS_MOVE_X:
+			kudu_program_joint_mode_set(JOINT_MODE_MOVEX);
+			break;
+		case KM_EDIT_JOINTS_MOVE_Y:
+			kudu_program_joint_mode_set(JOINT_MODE_MOVEY);
+			break;
+		case KM_EDIT_JOINTS_MOVE_Z:
+			kudu_program_joint_mode_set(JOINT_MODE_MOVEZ);
+			break;
+
 		case KM_EDIT_ATTACHMENTS_ATTACH:
-			kudu_gui_vertex_properties_edit(program.selected_object, selection_list);
+			kudu_gui_vertex_properties_edit(program.selected_object, selection_list, selected_bones_list);
 			break;
 		case KM_EDIT_ATTACHMENTS_CLEAR:
 			kudu_gui_vertex_properties_reset(selection_list);
@@ -1004,8 +1138,11 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 		case KM_SELECT_ALL:
 			if (program.selected_object == NULL) break;
 			tmp = kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no);
-			if ((program.mode == PROGRAM_MODE_EDIT) && (program.sub_mode == PROGRAM_MODE_SKELETON) || (tmp == SELECT_BONES)) {
+			if (tmp == SELECT_BONES) {
 				kudu_selection_list_select_bones(selected_bones_list, program.selected_object->bone, SELECT_ALL);
+				kudu_program_skeleton_list_regen();
+			} else if (tmp == SELECT_JOINTS) {
+				kudu_selection_list_select_joints(selected_bones_list, program.selected_object->joint, SELECT_ALL);
 				kudu_program_skeleton_list_regen();
 			} else {
 				kudu_selection_list_select(selection_list, program.selected_object, tmp, SELECT_ALL);
@@ -1015,8 +1152,11 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 		case KM_SELECT_NONE:
 			if (program.selected_object == NULL) break;
 			tmp = kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no);
-			if ((program.mode == PROGRAM_MODE_EDIT) && (program.sub_mode == PROGRAM_MODE_SKELETON) || (tmp == SELECT_BONES)) {
+			if (tmp == SELECT_BONES) {
 				kudu_selection_list_select_bones(selected_bones_list, program.selected_object->bone, SELECT_NOTHING);
+				kudu_program_skeleton_list_regen();
+			} else if (tmp == SELECT_JOINTS) {
+				kudu_selection_list_select_joints(selected_bones_list, program.selected_object->joint, SELECT_NOTHING);
 				kudu_program_skeleton_list_regen();
 			} else {
 				kudu_selection_list_select(selection_list, program.selected_object, tmp, SELECT_NOTHING);
@@ -1026,8 +1166,11 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 		case KM_SELECT_INVERSE:
 			if (program.selected_object == NULL) break;
 			tmp = kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no);
-			if ((program.mode == PROGRAM_MODE_EDIT) && (program.sub_mode == PROGRAM_MODE_SKELETON) || (tmp == SELECT_BONES)) {
+			if (tmp == SELECT_BONES) {
 				kudu_selection_list_select_bones(selected_bones_list, program.selected_object->bone, SELECT_INVERSE);
+				kudu_program_skeleton_list_regen();
+			} else if (tmp == SELECT_JOINTS) {
+				kudu_selection_list_select_joints(selected_bones_list, program.selected_object->joint, SELECT_INVERSE);
 				kudu_program_skeleton_list_regen();
 			} else {
 				kudu_selection_list_select(selection_list, program.selected_object, tmp, SELECT_INVERSE);
@@ -1068,6 +1211,7 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 				case SELECT_OBJECTS:
 					break;
 				case SELECT_BONES:
+				case SELECT_JOINTS:
 					if (!kudu_selection_list_anything_selected(selected_bones_list)) break;
 					kudu_selection_list_get_center_point(selected_bones_list, f);
 					break;
@@ -1136,6 +1280,11 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 			kudu_options_set_int_no(KO_BONES_VISIBLE, program.mode_opt_no, a);
 			kudu_program_skeleton_list_regen();
 			break;
+		case KM_PROGRAM_BONES_SHOW_JOINTS:
+			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
+			kudu_options_set_int_no(KO_JOINTS_VISIBLE, program.mode_opt_no, a);
+			kudu_program_skeleton_list_regen();
+			break;
 		case KM_PROGRAM_BONES_SHOW_NAMES:
 			kudu_program_set_skeleton_detail(SKELETON_DETAIL_SHOW_ALL);
 			break;
@@ -1174,6 +1323,11 @@ static void main_menu_action(GtkWidget *menu_item, K_MainMenu callback_action)
 			kudu_options_set_int_no(KO_SKIN_REAL_COLOURS, program.mode_opt_no, a);
 			kudu_program_skin_list_regen();
 			break;
+		case KM_PROGRAM_SKIN_TEXTURED:
+			a = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menu_item));
+			kudu_options_set_int_no(KO_SKIN_TEXTURED, program.mode_opt_no, a);
+			kudu_program_skin_list_regen();
+			break;
 		case KM_PROGRAM_SKIN_VERTEX:
 			kudu_program_set_skin_detail(K_RENDER_POINTS);
 			break;
@@ -1203,28 +1357,31 @@ static void main_toolbar_action(GtkWidget *item, unsigned int action)
 
 	switch (action) {
 		case KT_FILE_OPEN:
-			main_menu_action(NULL, KM_FILE_OPEN);
+			main_menu_action(NULL, GINT_TO_POINTER(KM_FILE_OPEN));
 			break;
 		case KT_FILE_SAVE:
-			main_menu_action(NULL, KM_FILE_SAVE);
+			main_menu_action(NULL, GINT_TO_POINTER(KM_FILE_SAVE));
 			break;
 		case KT_SELECT_OBJECTS:
-			kudu_program_selection_mode_set(SELECT_OBJECTS);
+			kudu_program_selection_mode_set(SELECT_OBJECTS, TRUE);
 			break;
 		case KT_SELECT_BONES:
-			kudu_program_selection_mode_set(SELECT_BONES);
+			kudu_program_selection_mode_set(SELECT_BONES, TRUE);
+			break;
+		case KT_SELECT_JOINTS:
+			kudu_program_selection_mode_set(SELECT_JOINTS, TRUE);
 			break;
 		case KT_SELECT_VERTICES:
-			kudu_program_selection_mode_set(SELECT_POINTS);
+			kudu_program_selection_mode_set(SELECT_POINTS, TRUE);
 			break;
 		case KT_SELECT_EDGES:
-			kudu_program_selection_mode_set(SELECT_EDGES);
+			kudu_program_selection_mode_set(SELECT_EDGES, TRUE);
 			break;
 		case KT_SELECT_FACES:
-			kudu_program_selection_mode_set(SELECT_FACES);
+			kudu_program_selection_mode_set(SELECT_FACES, TRUE);
 			break;
 		case KT_SELECT_SHAPES:
-			kudu_program_selection_mode_set(SELECT_SHAPES);
+			kudu_program_selection_mode_set(SELECT_SHAPES, TRUE);
 			break;
 	}
 }
@@ -1415,6 +1572,7 @@ int kudu_program_skin_list_regen(void)
 	int skin_detail = kudu_options_get_int_no(KO_SKIN_DETAIL, program.mode_opt_no);
 	int skin_smooth = kudu_options_get_int_no(KO_SKIN_SMOOTH, program.mode_opt_no);
 	int skin_colours = kudu_options_get_int_no(KO_SKIN_REAL_COLOURS, program.mode_opt_no);
+	int skin_textures = kudu_options_get_int_no(KO_SKIN_TEXTURED, program.mode_opt_no);
 
 	glNewList(program.skin_list, GL_COMPILE);
 	if (!skin_lit) glDisable(GL_LIGHTING);
@@ -1457,6 +1615,10 @@ int kudu_program_skin_list_regen(void)
 	if (!skin_smooth) render_options += K_RENDER_FLAT_SHADING;
 	if (skin_lit) render_options += K_RENDER_LIGHTING;
 	if (!skin_colours) render_options += K_RENDER_NO_COLOURS;
+	if ((render_options & K_RENDER_FACES) && (skin_textures)) {
+		render_options += K_RENDER_TEXTURES;
+		glEnable(GL_TEXTURE_2D);
+	}
 
 	if (program.mode == PROGRAM_MODE_ANIMATION) {
 		glPushMatrix();
@@ -1470,6 +1632,7 @@ int kudu_program_skin_list_regen(void)
 	glLineWidth(1.0);
 
 	if (!skin_lit) glEnable(GL_LIGHTING);
+	if (glIsEnabled(GL_TEXTURE_2D)) glDisable(GL_TEXTURE_2D);
 	glEndList();
 
 	return TRUE;
@@ -1479,6 +1642,8 @@ int kudu_program_skin_list_regen(void)
 /* kudu_program_skin_list_regen to regenerate the skin list */
 int kudu_program_update_skin(void)
 {
+	if ((program.mode == PROGRAM_MODE_EDIT) && (program.sub_mode == PROGRAM_MODE_SKELETON))  return TRUE;
+
 	int lit, smooth;
 
 	if (kudu_options_get_int_no(KO_SKIN_VISIBLE, program.mode_opt_no)) {
@@ -1500,14 +1665,14 @@ int kudu_program_skeleton_list_regen(void)
 	int render_options = K_RENDER_SHOW_SELECTED;
 
 	glNewList(program.skeleton_list, GL_COMPILE);
-	glDisable(GL_LIGHTING);
 
 	/* If we don't have a valid selected object or skeleton is set to invisible, then just clear this list */
 	if ((program.selected_object == NULL) || (!kudu_options_get_int_no(KO_BONES_VISIBLE, program.mode_opt_no))) {
-		glEnable(GL_LIGHTING);
 		glEndList();
 		return TRUE;
 	}
+
+	glDisable(GL_LIGHTING);
 
 	int detail = kudu_options_get_int_no(KO_BONES_DETAIL, program.mode_opt_no);
 	int axes_detail = kudu_options_get_int_no(KO_BONES_AXES, program.mode_opt_no);
@@ -1517,6 +1682,8 @@ int kudu_program_skeleton_list_regen(void)
 
 	if (axes_detail == SKELETON_DETAIL_SHOW_ALL)	render_options += K_RENDER_SHOW_AXES;
 	else if (axes_detail == SKELETON_DETAIL_SHOW_SELECTED) render_options += K_RENDER_SHOW_SELECTED_AXES;
+
+	if (kudu_options_get_int_no(KO_JOINTS_VISIBLE, program.mode_opt_no)) render_options += K_RENDER_JOINTS;
 
 	if (program.mode == PROGRAM_MODE_ANIMATION) {
 		glPushMatrix();
@@ -1556,13 +1723,15 @@ static gboolean display(GtkWidget *widget, GdkEventExpose *event, gpointer data)
 	if (program.sub_mode != PROGRAM_MODE_VIEW) {
 		switch (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no)) {
 			case SELECT_BONES:
+			case SELECT_JOINTS:
 				kudu_selection_list_draw_info(selected_bones_list, 10, program.windowHeight-60);
 				break;
 			case SELECT_OBJECTS:
 				break;
 			default:
+				kudu_selection_list_draw_info(selection_list, 10, program.windowHeight-60);
 				/*if (selection_list->selected_items <= 0) break;*/
-				switch (selection_list->type) {
+			/*	switch (selection_list->type) {
 					case SELECT_POINTS:
 						sprintf(text2, "vertices");
 						break;
@@ -1578,7 +1747,7 @@ static gboolean display(GtkWidget *widget, GdkEventExpose *event, gpointer data)
 				}
 				sprintf(text, "%d Selected %s", selection_list->selected_items, text2);
 				kudu_font_builtin_write_2d(10, program.windowHeight-60, text);
-				break;
+				break;*/
 		}
 	}
 
@@ -1653,6 +1822,7 @@ static gboolean key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	KuduEdge *edge;
 	KuduVertex *vertex, *vl[3];
 	KuduBone *bone;
+	KuduMaterial *material;
 	int vc;
 
 	switch (event->keyval){
@@ -1665,26 +1835,82 @@ static gboolean key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 						kudu_camera_set_mode(camera, CAMERA_MODE_SWING);
 			}
 			break;
+		case GDK_Delete:
+			if (kp) break;
+			if (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no) == SELECT_FACES) {
+				if (!kudu_selection_list_for_each_do(selection_list)) break;
+				while ((face = (KuduFace*)kudu_selection_list_next_do()) != NULL) {
+					printf("\nFace %d  uv coords and vertices\n", face->id);
+					material = face->material;
+					if (material != NULL) {
+						printf("Face has material: %d\n", material->id);
+						if (material->texture != NULL) printf("Material has a texture\n");
+						else	printf("Material has no texture\n");
+					} else printf("Face has no material\n");
+
+					if (!kudu_face_for_each_edge_do(face)) break;
+
+					while ((edge = kudu_face_for_each_edge_next_do()) != NULL) {
+						printf("On Edge %d :: ", edge->id);
+						if (edge->left_face == face) {
+							printf("vertex: %d :: ", edge->end_vertex->id);
+							printf("%4.2f, %4.2f | ", edge->e_uv[0], edge->e_uv[1]);
+							printf("%4.2f, %4.2f, %4.2f\n", edge->end_vertex->v[0], edge->end_vertex->v[1],
+								edge->end_vertex->v[2]);
+						} else if (edge->right_face == face) {
+							printf("vertex: %d :: ", edge->start_vertex->id);
+							printf("%4.2f, %4.2f | ", edge->s_uv[0], edge->s_uv[1]);
+							printf("%4.2f, %4.2f, %4.2f\n", edge->start_vertex->v[0], edge->start_vertex->v[1],
+								edge->start_vertex->v[2]);
+						}
+					}
+				}
+			}
+		break;
 		case GDK_Insert:
 			if (kp) break;
-			if (program.selection_mode == SELECT_SHAPES) {
+			printf("\n");
+			if (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no) == SELECT_SHAPES) {
 				if (!kudu_selection_list_for_each_do(selection_list)) break;
 				while ((shape = (KuduShape*)kudu_selection_list_next_do()) != NULL) {
 					printf("Shape: %d\n", shape->id);
 				}
 			}
-			if (program.selection_mode == SELECT_EDGES) {
+			if (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no) == SELECT_EDGES) {
 				if (!kudu_selection_list_for_each_do(selection_list)) break;
 				while ((edge = (KuduEdge*)kudu_selection_list_next_do()) != NULL) {
 					kudu_diag_print_edge(edge);
 				}
 			}
-		/*	if (program.selection_mode == SELECT_POINTS) {
-				if (!kudu_selection_list_for_each_do(selection_list)) break;
-				while ((vertex = (KuduVertex*)kudu_selection_list_next_do()) != NULL) {
-					printf("Vertex: %d,  Edge: %d\n", vertex->id, vertex->edge->id);
+			if (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no) == SELECT_POINTS) {
+				if (program.sub_mode == PROGRAM_MODE_ATTACH) {
+					if (!kudu_selection_list_for_each_do(selection_list)) break;
+					while ((vertex = (KuduVertex*)kudu_selection_list_next_do()) != NULL) {
+						kudu_vertex_print_attachments(vertex);
+					}
+				} else {
+					if (!kudu_selection_list_for_each_do(selection_list)) break;
+					while ((vertex = (KuduVertex*)kudu_selection_list_next_do()) != NULL) {
+						printf("Vertex: %d,  Edge: %d  pos: %4.2f, %4.2f, %4.2f  normal: %4.2f, %4.2f, %4.2f \n",
+												vertex->id, vertex->edge->id,
+												vertex->v[0], vertex->v[1], vertex->v[2],
+												vertex->n[0], vertex->n[1], vertex->n[2]);
+					}
 				}
-			} else*/
+			}
+			if (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no) == SELECT_FACES) {
+				if (!kudu_selection_list_for_each_do(selection_list)) break;
+				while ((face = (KuduFace*)kudu_selection_list_next_do()) != NULL) {
+					printf("Face: %d,  Edge: %d\n", face->id, face->edge->id);
+					printf("Normal Vector: %4.8f, %4.8f, %4.8f\n", face->fn[0], face->fn[1], face->fn[2]);
+					printf("Face Vertices:\n");
+					if (!kudu_face_for_each_vertex_do(face)) break;
+					while ((vertex = kudu_face_for_each_vertex_next_do()) != NULL) {
+						printf("Vertex: %d,  ", vertex->id);
+					}
+					printf("\n\n");
+				}
+			}
 			if (program.sub_mode == PROGRAM_MODE_SKELETON) {
 				printf("\nThe following bones selected:\n");
 				if (!kudu_selection_list_for_each_do(selected_bones_list)) break;
@@ -1693,9 +1919,12 @@ static gboolean key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 				}
 				printf("\n");
 			}
+			break;
 		default:
 			break;
 	}
+
+	if (program.uip_mode) kudu_uip_keypress(event->keyval, event->type);
 
 	return FALSE;
 }
@@ -1703,8 +1932,8 @@ static gboolean key_press(GtkWidget *widget, GdkEventKey *event, gpointer data)
 static gboolean mouse_motion(GtkWidget *widget, GdkEventMotion *event, gpointer window)
 {
 	static gboolean force_shift, skip_turn = FALSE;
-	GLint X = (GLint)event->x;
-	GLint Y = (GLint)event->y;
+	int X = (GLint)event->x;
+	int Y = (GLint)event->y;
 
 	float md, tx, ty, vscroll, hscroll;
 	int nx, ny;
@@ -1737,12 +1966,21 @@ static gboolean mouse_motion(GtkWidget *widget, GdkEventMotion *event, gpointer 
 	if (kudu_camera_mouse_action(camera, hscroll, vscroll)) kudu_program_view_point_set();
 
 
+	if (program.uip_mode) {
+		kudu_uip_mouse_motion(X, Y, event->state, hscroll, vscroll, opt_h, opt_v);
+	} else
 	/* Adjust apropriate bone angle if in bone adjustment mode */
 	if (program.bone_mode != BONE_MODE_FIXED) {
-		if (kudu_bones_edit_selection(selected_bones_list, opt_h, opt_v, program.bone_mode)) {
+		if (kudu_bones_edit_selection(selected_bones_list, opt_h, opt_v, hscroll, vscroll, program.bone_mode)) {
 			kudu_bone_smart_update_all(program.selected_object->bone);
 			kudu_program_skeleton_list_regen();
 
+			kudu_program_update_skin();
+		}
+	} else if (program.joint_mode != JOINT_MODE_FIXED) {
+		if (kudu_joints_edit_selection(selected_bones_list, opt_h, opt_v, program.joint_mode)) {
+			kudu_bone_magic_update_all(program.selected_object->bone);
+			kudu_program_skeleton_list_regen();
 			kudu_program_update_skin();
 		}
 	} else if (program.edit_mode != EDIT_MODE_NONE) {
@@ -1760,7 +1998,7 @@ static gboolean mouse_motion(GtkWidget *widget, GdkEventMotion *event, gpointer 
 	}
 
 	if ((camera->mode != CAMERA_MODE_FIXED) || (program.bone_mode != BONE_MODE_FIXED) ||
-	    (program.edit_mode != EDIT_MODE_NONE)) {
+	    (program.joint_mode != JOINT_MODE_FIXED) || (program.edit_mode != EDIT_MODE_NONE)) {
 		force_shift = TRUE;
 		kudu_gui_center_pointer();
 	}
@@ -1822,6 +2060,18 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 
 				kudu_program_skeleton_list_regen();
 				kudu_program_update_skin();
+			} else if (program.joint_mode != JOINT_MODE_FIXED) {
+				kudu_joints_edit_unanchor(selected_bones_list, program.joint_mode);
+				kudu_bone_smart_update_all(program.selected_object->bone);
+				kudu_program_joint_mode_set(JOINT_MODE_FIXED);
+
+				kudu_program_skeleton_list_regen();
+				kudu_program_update_skin();
+			} else if (program.edit_mode != EDIT_MODE_NONE) {
+				kudu_skin_edit_unanchor(selection_list, program.edit_mode);
+				kudu_program_edit_mode_set(EDIT_MODE_NONE);
+				kudu_program_update_skin();
+
 			} else if (camera->mode != CAMERA_MODE_FIXED) {
 				kudu_camera_set_mode(camera, CAMERA_MODE_RESET);
 				kudu_program_view_point_set();
@@ -1830,7 +2080,9 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 				if (program.mode == PROGRAM_MODE_EDIT) {
 					switch (program.sub_mode) {
 						case PROGRAM_MODE_SKELETON:
-							menu = kudu_menu_get_submenu(KM_EDIT_BONES);
+							if (kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no) == SELECT_JOINTS)
+								menu = kudu_menu_get_submenu(KM_EDIT_JOINTS);
+							else	menu = kudu_menu_get_submenu(KM_EDIT_BONES);
 							break;
 						case PROGRAM_MODE_SKIN:
 							menu = kudu_menu_get_submenu(KM_EDIT_SKIN);
@@ -1882,8 +2134,12 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 				}
 
 				if (program.bone_mode != BONE_MODE_FIXED) {
-
 					kudu_program_bone_mode_set(BONE_MODE_FIXED);
+					do_pick = FALSE;
+				}
+
+				if (program.joint_mode != JOINT_MODE_FIXED) {
+					kudu_program_joint_mode_set(JOINT_MODE_FIXED);
 					do_pick = FALSE;
 				}
 
@@ -1907,16 +2163,24 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 	int viewport[4], selection_type, render_type, fc;
 	unsigned int selection_mode;
 
-	/* determine the selection mode */
-	if ((program.mode == PROGRAM_MODE_EDIT) && (program.sub_mode == PROGRAM_MODE_SKELETON)) selection_mode = SELECT_BONES;
-	else	selection_mode = kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no);
+	/* Retrieve the selection mode */
+	selection_mode = kudu_options_get_int_no(KO_SELECTION_MODE, program.mode_opt_no);
 
 	/* If we are selecting objects, but the object list is null, then stop */
 	if ((selection_mode == SELECT_OBJECTS) && (object == NULL)) return TRUE;
 	else if (program.selected_object == NULL) return TRUE;	/* If not we need a valid selected object to continue... */
 
-	if ((selection_mode == SELECT_BONES) && (program.selected_object->bone == NULL)) return TRUE;
-	else if ((selection_mode != SELECT_BONES) && (program.selected_object->skin == NULL)) return TRUE;
+	switch (selection_mode) {
+		case SELECT_BONES:
+			if (program.selected_object->bone == NULL) return TRUE;
+			break;
+		case SELECT_JOINTS:
+			if (program.selected_object->joint == NULL) return TRUE;
+			break;
+		default:
+			if (program.selected_object->skin == NULL) return TRUE;
+			break;
+	}
 
 	glGetIntegerv(GL_VIEWPORT, viewport);
 
@@ -1940,6 +2204,9 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 	if (selection_mode == SELECT_BONES) {
 		glPushName(0);
 		kudu_draw_all_bones(program.selected_object->bone, K_RENDER_SELECT);
+	} else if (selection_mode == SELECT_JOINTS) {
+		glPushName(0);
+		kudu_draw_all_joints(program.selected_object->joint, K_RENDER_SELECT);
 	} else if (selection_mode == SELECT_OBJECTS) {
 		kudu_draw_objects(object, K_RENDER_FACES | K_RENDER_SELECT_OBJECTS | K_RENDER_TRANSLATE_POS);
 	} else {
@@ -1974,8 +2241,8 @@ static gboolean mouse_button(GtkWidget *widget, GdkEventButton *event, gpointer 
 
 	program.hit.hits = glRenderMode(GL_RENDER);
 	kudu_selection_hits_process(selection_mode, selection_type, event->state, object, selection_list, selected_bones_list);
-	kudu_program_skeleton_list_regen();
-	kudu_program_skin_list_regen();
+	if ((selection_mode == SELECT_BONES) || (selection_mode == SELECT_JOINTS)) kudu_program_skeleton_list_regen();
+	else kudu_program_skin_list_regen();
 
 	return TRUE;
 }
@@ -2048,6 +2315,7 @@ static GtkWidget *create_main_window(GdkGLConfig *glConfig)
 	GtkToolItem *tool_item;
 	GtkAccelGroup *accel_group;
 
+
 	/* Main application window */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_drag_dest_set(window, GTK_TARGET_SAME_APP, NULL, 0, 0);
@@ -2072,51 +2340,6 @@ static GtkWidget *create_main_window(GdkGLConfig *glConfig)
 	/* Toolbar */
 /*	toolbar = gtk_toolbar_new();*/
 	toolbar = kudu_main_toolbar_build(accel_group, G_CALLBACK(main_toolbar_action));
-
-/*	gtk_toolbar_insert_stock(GTK_TOOLBAR(toolbar), GTK_STOCK_OPEN, "Open a Kudu Animated Object",
-			"", G_CALLBACK(kudu_program_open_kudu_object), NULL, -1);
-	gtk_toolbar_insert_stock(GTK_TOOLBAR(toolbar), GTK_STOCK_SAVE, "Save a Kudu Animated Object",
-			"", G_CALLBACK(kudu_program_save_kudu_object), NULL, -1);*/
-
-	/*tool_item = gtk_tool_button_new_from_stock(GTK_STOCK_OPEN);
-	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), tool_item, -1);
-
-	tool_item = gtk_tool_button_new_from_stock(GTK_STOCK_SAVE);
-	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), tool_item, -1);
-
-	kudu_gui_toolbar_add_separator(toolbar, -1, FALSE, TRUE);
-
-	kudu_gui_toolbar_add_separator(toolbar, -1, TRUE, FALSE);
-
-	tool_item = kudu_gui_toolbar_add_radio_button(toolbar, -1, TRUE, "Objects", "../images/object.png");
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(main_toolbar_action), (gpointer)SELECT_OBJECTS);
-	STACK_ADD("select_objects", tool_item);
-
-	tool_item = kudu_gui_toolbar_add_radio_button(toolbar, -1, FALSE, "Bones", "../images/bone.png");
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(main_toolbar_action), (gpointer)SELECT_BONES);
-	STACK_ADD("select_bones", tool_item);
-
-	tool_item = kudu_gui_toolbar_add_radio_button(toolbar, -1, FALSE, "Vertices", "../images/vertex.png");
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(main_toolbar_action), (gpointer)SELECT_POINTS);
-	STACK_ADD("select_vertices", tool_item);
-
-	tool_item = kudu_gui_toolbar_add_radio_button(toolbar, -1, FALSE, "Edges", "../images/edge.png");
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(main_toolbar_action), (gpointer)SELECT_EDGES);
-	STACK_ADD("select_edges", tool_item);
-
-	tool_item = kudu_gui_toolbar_add_radio_button(toolbar, -1, FALSE, "Faces", "../images/face.png");
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(main_toolbar_action), (gpointer)SELECT_FACES);
-	STACK_ADD("select_faces", tool_item);
-
-	tool_item = kudu_gui_toolbar_add_radio_button(toolbar, -1, FALSE, "Shapes", "../images/shape.png");
-	g_signal_connect(G_OBJECT(tool_item), "clicked", G_CALLBACK(main_toolbar_action), (gpointer)SELECT_SHAPES);
-	STACK_ADD("select_shapes", tool_item);
-
-	kudu_gui_toolbar_add_separator(toolbar, -1, TRUE, FALSE);
-
-	kudu_gui_toolbar_add_separator(toolbar, -1, FALSE, TRUE);
-	kudu_gui_toolbar_add_separator(toolbar, -1, FALSE, FALSE);
-	kudu_gui_toolbar_add_separator(toolbar, -1, FALSE, FALSE);*/
 
 	gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
 	gtk_widget_show(toolbar);
@@ -2146,7 +2369,6 @@ static GtkWidget *create_main_window(GdkGLConfig *glConfig)
 	g_signal_connect_after(G_OBJECT(window), "key_press_event", G_CALLBACK(key_press), gl_drawing_area);
 	g_signal_connect_after(G_OBJECT(window), "key_release_event", G_CALLBACK(key_press), gl_drawing_area);
 
-	gtk_idle_add((GSourceFunc)redraw, gl_drawing_area);
 
 /*	status_bar = gtk_statusbar_new();
 	gtk_statusbar_push(GTK_STATUSBAR(status_bar), 0, "Kudu - Copyright (C) 2005 Daniel Pekelharing");
@@ -2154,30 +2376,46 @@ static GtkWidget *create_main_window(GdkGLConfig *glConfig)
 	gtk_widget_show(status_bar);*/
 
 	kudu_stack_list_add_item("main_window", window);
+	kudu_stack_list_add_item("main_gl_drawing_area", gl_drawing_area);
 
 	#ifdef SUPPORT_PYTHON
 	kudu_script_list_init();
 	#endif
+
+	kudu_options_load_accel_map();
 
 	return window;
 }
 
 int main(int argc, char** argv)
 {
-	GtkWidget *window;
+	GtkWidget *window, *gl_drawing_area;
 	GdkGLConfig *glConfig;
 
 	gtk_init(&argc, &argv);
 	gtk_gl_init(&argc, &argv);
 
+	/* Init stack list and options system */
 	kudu_stack_list_init();
 	kudu_options_init();
+
+	/* Set default options, this will also load user specific options if user has a config file in their home dir */
 	kudu_options_set_defaults();
 
+	/* Parse command line options */
+	kudu_options_parse(argc, argv);
+
+	/* Initialize the splash screen... (if enabled) */
+	if (kudu_options_enabled(KO_SHOW_SPLASH)) kudu_about_splash_display();
+
+	/* Initialize OpenGL system and create main window */
+	kudu_about_splash_message("Creating main window...");
 	glConfig = configure_gl();
 	window = create_main_window(glConfig);
 
+	kudu_about_splash_message("Configuring...");
 
+	/* Setup initial window size and pos based on options */
 	if (kudu_options_enabled(KO_WINDOW_MAXED)) {
 		if (kudu_options_get_int_no(KO_WINDOW_MAXED, 0))
 			gtk_window_maximize(GTK_WINDOW(window));
@@ -2195,7 +2433,16 @@ int main(int argc, char** argv)
 		gtk_window_move(GTK_WINDOW(window), pos[0], pos[1]);
 	}
 
+	/* Set splash screen parent to main window - so that it remains on top */
+	kudu_about_splash_set_parent(GTK_WINDOW(window));
 	gtk_widget_show_all(window);
+
+	/* Close the splash screen */
+	kudu_about_splash_close();
+
+	/* Start the idle time funcion */
+	gl_drawing_area = kudu_stack_list_get_item("main_gl_drawing_area");
+	gtk_idle_add((GSourceFunc)redraw, gl_drawing_area);
 
 	gtk_main();
 

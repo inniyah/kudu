@@ -216,7 +216,7 @@ KuduShape *kudu_shape_new(KuduObject *object, KuduShape *previous_shape)
 		if (old_next_shape != NULL) old_next_shape->previous_shape = shape;
 	}
 
-	shape->id = object->next_shape_id;
+	shape->id = object->next_shape_id++;
 	shape->selected = FALSE;
 
 	shape->face = NULL;
@@ -336,8 +336,8 @@ KuduEdge *kudu_edge_find_with_vertex_ids(KuduEdge *edge, int id1, int id2)
 			s_vertex = current_edge->start_vertex;
 			e_vertex = current_edge->end_vertex;
 			if ((s_vertex != NULL) && (e_vertex != NULL)) {
-				if (((s_vertex->id == id1) || (s_vertex->id == id2)) &&
-				    ((e_vertex->id == id1) || (e_vertex->id == id2))) found = TRUE;
+				if (((s_vertex->id == id1) && (e_vertex->id == id2)) ||
+				    ((s_vertex->id == id2) && (e_vertex->id == id1))) found = TRUE;
 				else	found = FALSE;
 			} else	found = FALSE;
 
@@ -805,11 +805,16 @@ int kudu_face_for_each_vertex_do(KuduFace *face)
 
 KuduVertex *kudu_face_for_each_vertex_next_do(void)
 {
-	if (face_vert == NULL) return NULL;
-	if (edge_vert == NULL) return NULL;
+	/* This var keeps track of the previous vertex...
+	   in order to prevent lockups (due to malformed data structures) */
+	static KuduVertex *previous_vertex = NULL;
+
+	if ((face_vert == NULL) || (edge_vert == NULL)) {
+		previous_vertex = NULL;
+		return NULL;
+	}
 
 	KuduVertex *vertex;
-	static KuduVertex *previous_vertex;
 
 	if (edge_vert->right_face == face_vert) {
 		vertex = edge_vert->start_vertex;
@@ -842,8 +847,14 @@ int kudu_face_for_each_edge_do(KuduFace* face)
 
 KuduEdge *kudu_face_for_each_edge_next_do(void)
 {
-	if (gfe_face == NULL) return NULL;
-	if (gfe_edge == NULL) return NULL;
+	/* This var keeps track of the previous edge...
+	   in order to prevent lockups (due to malformed data structures) */
+	static KuduEdge *previous_edge = NULL;
+
+	if ((gfe_face == NULL) || (gfe_edge == NULL)) {
+		previous_edge = NULL;
+		return NULL;
+	}
 
 	if (gfe_edge->right_face == gfe_face) {
 		gfe_edge = gfe_edge->right_succ;
@@ -852,7 +863,6 @@ KuduEdge *kudu_face_for_each_edge_next_do(void)
 		gfe_edge = gfe_edge->left_succ;
 	}
 
-	static KuduEdge *previous_edge;
 	KuduEdge *edge = gfe_edge;
 
 	if (previous_edge == edge) gfe_edge = NULL;
@@ -879,11 +889,11 @@ KuduEdge *kudu_vertex_for_each_edge_next_do(void)
 	if (gve_vertex == NULL) return NULL;
 	if (gve_edge == NULL) return NULL;
 
-	if (gve_edge->start_vertex == gve_vertex) {
-		gve_edge = gve_edge->left_succ;
-	} else
 	if (gve_edge->end_vertex == gve_vertex) {
-		gve_edge = gve_edge->right_succ;
+		gve_edge = gve_edge->left_pred;
+	} else
+	if (gve_edge->start_vertex == gve_vertex) {
+		gve_edge = gve_edge->right_pred;
 	}
 
 	KuduEdge *edge = gve_edge;
@@ -903,11 +913,11 @@ int kudu_shape_normals_calculate(KuduShape *shape)
 	KuduVertex *current_vertex, *vertex[3];
 	unsigned char magic_normal = 1;
 	int parse_backwards, eol, bnv, c, a, b;
-	GLfloat v[3][3], nv[3];
+	float v[3][3], nv[3];
 
 	if (shape->vertex != NULL) magic_normal = shape->vertex->magic_normal;
 	if (magic_normal < 255) magic_normal++;
-	else	magic_normal = 0;
+	else	magic_normal = 1;
 
 	for (parse_backwards = 0; parse_backwards < 2; parse_backwards++) {
 		current_face = NULL;
@@ -925,30 +935,21 @@ int kudu_shape_normals_calculate(KuduShape *shape)
 			c = 0;
 			bnv = 0; /* Bad normal vertices */
 
-			do {
-				if (current_edge->right_face == current_face) {
-					current_vertex = current_edge->start_vertex;
-					current_edge = current_edge->right_succ;
-				} else
-				if (current_edge->left_face == current_face) {
-					current_vertex = current_edge->end_vertex;
-					current_edge = current_edge->left_succ;
-				} else break;
+			kudu_face_for_each_vertex_do(current_face);
+			while ((current_vertex = kudu_face_for_each_vertex_next_do()) != NULL) {
 
-				if (current_vertex != NULL) {
-					/* add this vertex to the vertex list for "flat" normal calculation */
-					if (c < 3) {
-						vertex[c] = current_vertex;
-						for (a = 0; a < 3; a++) v[c][a] = current_vertex->av[a];
-						c++;
-					} else if (c > 3) { /* "flat" normal already calculated, "append" to vertex */
-						if (current_vertex->magic_normal != magic_normal) {
-							for (a = 0; a < 3; a++) current_vertex->n[a] = nv[a];
-							current_vertex->magic_normal = magic_normal;
-						} else {
-							for (b = 0; b < 3; b++) current_vertex->n[b] += nv[b];
-							kudu_math_vertex_normalize(current_vertex->n);
-						}
+				/* add this vertex to the vertex list for "flat" normal calculation */
+				if (c < 3) {
+					vertex[c] = current_vertex;
+					for (a = 0; a < 3; a++) v[c][a] = current_vertex->av[a];
+					c++;
+				} else if (c > 3) { /* "flat" normal already calculated, "append" to vertex */
+					if (current_vertex->magic_normal != magic_normal) {
+						for (a = 0; a < 3; a++) current_vertex->n[a] = nv[a];
+						current_vertex->magic_normal = magic_normal;
+					} else {
+						for (b = 0; b < 3; b++) current_vertex->n[b] += nv[b];
+						kudu_math_vertex_normalize(current_vertex->n);
 					}
 				}
 
@@ -957,7 +958,6 @@ int kudu_shape_normals_calculate(KuduShape *shape)
 					if (!kudu_math_normal_vector(vertex[0]->av, vertex[1]->av, vertex[2]->av, nv)) {
 						c = 2;
 						bnv++;	/* Bad normal vertices */
-						if (bnv == 1) bnv_edge = current_edge;
 						continue;
 					}
 
@@ -966,7 +966,7 @@ int kudu_shape_normals_calculate(KuduShape *shape)
 
 					/* "Append" flat normal vector to each of these vertices */
 					for (a = 0; a < 3; a++) {
-						if ((bnv) && (a == 2)) break;
+						/*if ((bnv) && (a == 2)) break;*/
 						if (vertex[a]->magic_normal != magic_normal) {
 							for (b = 0; b < 3; b++) vertex[a]->n[b] = nv[b];
 							vertex[a]->magic_normal = magic_normal;
@@ -975,11 +975,9 @@ int kudu_shape_normals_calculate(KuduShape *shape)
 							kudu_math_vertex_normalize(vertex[a]->n);
 						}
 					}
-
-					if (bnv) current_edge = bnv_edge;
 				}
 
-			} while ((current_edge != current_face->edge) && (current_edge != NULL));
+			}/* while ((current_edge != current_face->edge) && (current_edge != NULL));*/
 
 			eol_test:
 			if (!parse_backwards) {
@@ -1086,10 +1084,6 @@ int kudu_shape_num_faces(KuduShape *shape)
 
 	return count;
 }
-
-
-
-
 
 
 

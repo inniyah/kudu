@@ -90,6 +90,15 @@ int kudu_skin_edit_shape(KuduShape *shape, float opt_h, int edit_mode)
 	return TRUE;
 }
 
+static float anchor_h = 0.0, anchor_v = 0.0;
+int kudu_skin_edit_anchor(void)
+{
+	anchor_h = 0.0;
+	anchor_v = 0.0;
+
+	return TRUE;
+}
+
 int kudu_skin_edit_selection(KuduSelectionList *selection_list, float opt_h, float opt_v, int edit_mode)
 {
 	if (selection_list == NULL) {
@@ -106,6 +115,9 @@ int kudu_skin_edit_selection(KuduSelectionList *selection_list, float opt_h, flo
 	vertex_magic_touch++;
 	/* rather unlikely that we reach the maximum int... */
 	if (vertex_magic_touch == MAXINT) vertex_magic_touch = 0;
+
+	anchor_h += opt_h;
+	anchor_v += opt_v;
 
 	while ((item = (void*)kudu_selection_list_next_do()) != NULL) {
 		switch (selection_list->type) {
@@ -134,6 +146,21 @@ int kudu_skin_edit_selection(KuduSelectionList *selection_list, float opt_h, flo
 		}*/
 
 	/*kudu_program_skin_list_regen();*/
+
+	return TRUE;
+}
+
+int kudu_skin_edit_unanchor(KuduSelectionList *selection_list, int edit_mode)
+{
+	if (selection_list == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	kudu_skin_edit_selection(selection_list, -anchor_h, -anchor_v, edit_mode);
+
+	anchor_h = 0.0;
+	anchor_v = 0.0;
 
 	return TRUE;
 }

@@ -19,18 +19,23 @@
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  */
 /*                                                                            */
 /******************************************************************************/
-#ifndef ABOUT_H_INCLUDED
-#define ABOUT_H_INCLUDED
+#include "uiplugin.h"
 
-#include "globals.h"
+int kudu_uip_mouse_motion(int x, int y, int state, float hscroll, float vscroll, float opt_h, float opt_v)
+{
 
 
-int kudu_about_printout(void);
-GtkWidget *kudu_about_splash_window(void);
-void kudu_about_splash_display(void);
-void kudu_about_splash_set_parent(GtkWindow*);
-gboolean kudu_about_splash_close(void);
-void kudu_about_splash_message(char*);
+}
 
-#endif /* ABOUT_H_INCLUDED */
+int kudu_uip_mouse_button(int x, int y, int button, int state)
+{
+
+}
+
+int kudu_uip_keypress(int key, int state)
+{
+	printf("keypressed: %d\n", key);
+
+}
+
 

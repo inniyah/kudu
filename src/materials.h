@@ -36,5 +36,6 @@ KuduMaterial *kudu_material_next_do(void);
 KuduMaterial *kudu_material_find_with_id(KuduMaterial*, int);
 KuduMaterial *kudu_material_find_with_same_values(KuduMaterial*, KuduMaterial*);
 int kudu_material_num_after(KuduMaterial*);
+KuduMaterial *kudu_material_find_with_name(KuduMaterial*, char*);
 
 #endif /* MATERIALS_H_INCLUDED */
