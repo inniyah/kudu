@@ -5,6 +5,14 @@ Kudu is a Gtk+ and OpenGL powered animation package, which relies moslty on skel
 License: GNU General Public License version 2.0 (GPLv2)
 
 
+Building Kudu Animator
+======================
+
+autoreconf 
+PYTHON=python3 ./configure 
+make
+
+
 Kudu Animator 0.1.2
 ===================
 
