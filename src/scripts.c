@@ -302,15 +302,15 @@ int kudu_script_list_init(void)
 	int a, b, c;
 	char *script_path, *scripts;
 	struct dirent **namelist;
-
+	const char *scripts_dir = kudu_options_get_string(KO_DIR_KUDU_SCRIPTS);
 	const char *user_scripts = kudu_options_get_string(KO_DIR_USER_SCRIPTS);
 
-	a = strlen(KUDU_SCRIPTS_DIR)+1;
+	a = strlen(scripts_dir)+1;
 	b = strlen(user_scripts)+1;
 	if (a+b > 0) {
 		script_path = (char*)malloc(a+b+3);
-		if ((a) && (b)) sprintf(script_path, ".;%s;%s\0", KUDU_SCRIPTS_DIR, user_scripts);
-		else if (a) sprintf(script_path, ".;%s\0", KUDU_SCRIPTS_DIR);
+		if ((a) && (b)) sprintf(script_path, ".;%s;%s\0", scripts_dir, user_scripts);
+		else if (a) sprintf(script_path, ".;%s\0", scripts_dir);
 		else if (b) sprintf(script_path, ".;%s\0", user_scripts);
 	} else {
 		script_path = (char*)malloc(2);

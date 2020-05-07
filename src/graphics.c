@@ -36,6 +36,21 @@ void kudu_graphics_colours_reload(void)
 	cols_set = TRUE;
 }
 
+/* Create OpenGL display lists */
+unsigned int kudu_graphics_gen_gl_lists(unsigned int num)
+{
+	unsigned int base, a;
+
+	base = glGenLists(num);
+
+	for (a = 0; a < num; a++) {
+		glNewList(base+a, GL_COMPILE);
+		glEndList();
+	}
+
+	return base;
+}
+
 void kudu_draw_axes(void)
 {
 	float axes_colours[18];

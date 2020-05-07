@@ -25,6 +25,10 @@ GtkWidget *kudu_about_dialog(void)
 {
 	GtkWidget *dialog, *logo, *label, *license_view, *scrolled_window, *frame, *tab, *vbox, *credits_view;
 	GtkTextBuffer *license, *credits;
+	const char *image_dir = kudu_options_get_string(KO_DIR_KUDU_IMAGES);
+	char *imgf;
+
+	imgf = (char*)malloc(strlen(image_dir)+50);
 
 	dialog = gtk_dialog_new();
 	gtk_window_set_title(GTK_WINDOW(dialog), "About Kudu");
@@ -41,7 +45,8 @@ GtkWidget *kudu_about_dialog(void)
 	/* Contents of "Copyright info" tab */
 
 	/* Logo */
-	logo = gtk_image_new_from_file(KUDU_IMAGES_DIR"logo.png");
+	sprintf(imgf, "%slogo.png\0", image_dir);
+	logo = gtk_image_new_from_file(imgf);
 	gtk_box_pack_start(GTK_BOX(vbox), logo, FALSE, FALSE, 0);
 
 	/* Version string */
@@ -116,6 +121,8 @@ GtkWidget *kudu_about_dialog(void)
 
 	gtk_dialog_add_button(GTK_DIALOG(dialog), "OK", GTK_RESPONSE_OK);
 
+	free(imgf);
+
 	return dialog;
 }
 
@@ -159,6 +166,10 @@ GtkWidget *kudu_about_splash_window(void)
 {
 	GtkWidget *window, *splash_logo, *vbox, *label;
 	GdkColor color;
+	const char *image_dir = kudu_options_get_string(KO_DIR_KUDU_IMAGES);
+	char *imgf;
+
+	imgf = (char*)malloc(strlen(image_dir)+50);
 
 	color.red = 65535;
 	color.blue = 65535;
@@ -175,7 +186,8 @@ GtkWidget *kudu_about_splash_window(void)
 	vbox = gtk_vbox_new(FALSE, 10);
 	gtk_container_add(GTK_CONTAINER(window), vbox);
 
-	splash_logo = gtk_image_new_from_file(KUDU_IMAGES_DIR"splash.png");
+	sprintf(imgf, "%ssplash.png\0", image_dir);
+	splash_logo = gtk_image_new_from_file(imgf);
 	gtk_box_pack_start(GTK_BOX(vbox), splash_logo, TRUE, TRUE, 10);
 
 	label = gtk_label_new(KUDU_VERSION_STRING);
@@ -193,6 +205,8 @@ GtkWidget *kudu_about_splash_window(void)
 	gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 5);*/
 
 	gtk_window_set_auto_startup_notification(TRUE);
+
+	free(imgf);
 
 	return window;
 }

@@ -46,6 +46,25 @@ that you can run:
 
 su -c "make install"
 
+Running "make install" is optional, if you do not wish to install Kudu
+into the main file system, you can simple run the binary directly from
+the "src" directory... you can even copy it into the top level directory
+and run it from there.
+
+
+
+*** NOTE: CVS Version: ***
+If you are compiling from a CVS checkout, you will need to have the GNU
+Autotools installed. You should then be able to build the configure
+script by simple running "autoreconf" from the top level kudu directory,
+alternatively you can run the tools manually one by one:
+
+autoheader
+autoconf
+auotmake
+
+Thereafter you should be able to continue as with a normal release.
+
 
 You can run Kudu with:
 ======================

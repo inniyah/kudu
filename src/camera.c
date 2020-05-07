@@ -46,6 +46,10 @@ KuduCamera *kudu_camera_new(void)
 	camera->near_plane = 0.1;
 	camera->far_plane = 1250.0;
 
+	camera->last_stack_operation = 0; /* This var tracks the previous stack operation .. 0 = nothing,  < 0 mode popped,  > 0 mode pushed */
+	camera->cmode = 0;
+	camera->mode_stack[camera->cmode] = CAMERA_MODE_FIXED;
+
 	return camera;
 }
 
@@ -308,7 +312,7 @@ int kudu_camera_ortho(KuduCamera *camera, int on)
 	return TRUE;
 }
 
-int kudu_camera_set_mode(KuduCamera *camera, int mode)
+int kudu_camera_set_mode(KuduCamera *camera)
 {
 	if (camera == NULL) return FALSE;
 
@@ -316,16 +320,19 @@ int kudu_camera_set_mode(KuduCamera *camera, int mode)
 
 	int a;
 
-	camera->old_mode = camera->mode;
-	camera->mode = mode;
+	/*camera->old_mode = camera->mode;*/
+	camera->mode = camera->mode_stack[camera->cmode];
 
-	switch (mode) {
+	switch (camera->mode_stack[camera->cmode]) {
 		case CAMERA_MODE_RESET:
 			camera->ha = camera->old_ha;
 			camera->va = camera->old_va;
 			for (a = 0; a < 3; a++) camera->position[a] = camera->old_position[a];
 			kudu_camera_swing(camera, 0, 0, 0);
 			camera->mode = CAMERA_MODE_FIXED;
+			camera->last_stack_operation = 0;
+			camera->cmode = 0;
+			camera->mode_stack[camera->cmode] = CAMERA_MODE_FIXED;
 		case CAMERA_MODE_FIXED:
 			kudu_gui_show_cursor();
 			kudu_gui_restore_pointer();
@@ -335,7 +342,7 @@ int kudu_camera_set_mode(KuduCamera *camera, int mode)
 			kudu_gui_hide_cursor();
 			kudu_gui_center_pointer();
 
-			if (camera->old_mode == CAMERA_MODE_FIXED) {
+			if ((camera->mode_stack[camera->cmode-1] == CAMERA_MODE_FIXED) && (camera->last_stack_operation > 0)) {
 				camera->old_ha = camera->ha;
 				camera->old_va = camera->va;
 				for (a = 0; a < 3; a++) camera->old_position[a] = camera->position[a];
@@ -346,22 +353,116 @@ int kudu_camera_set_mode(KuduCamera *camera, int mode)
 	return TRUE;
 }
 
+int kudu_camera_push_mode(KuduCamera *camera, K_CameraMode mode)
+{
+	if (camera == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	if (camera->cmode > 3) return FALSE;
+
+	camera->last_stack_operation = 1;
+	camera->cmode++;
+
+	camera->mode_stack[camera->cmode] = mode;
+
+	kudu_camera_set_mode(camera);
+
+	return TRUE;
+}
+
+int kudu_camera_pop_mode(KuduCamera *camera)
+{
+	if (camera == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	if (camera->cmode == 0) return FALSE;
+
+	camera->last_stack_operation = -1;
+	camera->cmode--;
+
+	kudu_camera_set_mode(camera);
+
+	return TRUE;
+}
+
+int kudu_camera_pop_all_modes(KuduCamera *camera)
+{
+	if (camera == NULL) {
+		kudu_error(KE_OBJECT_INVALID);
+		return FALSE;
+	}
+
+	camera->last_stack_operation = -2;
+	camera->cmode = 0;
+	camera->mode_stack[camera->cmode] = CAMERA_MODE_FIXED;
+
+	kudu_camera_set_mode(camera);
+
+	return TRUE;
+}
+
 int kudu_camera_mouse_action(KuduCamera *camera, float hscroll, float vscroll)
 {
 	if (camera == NULL) return FALSE;
-	float amount;
+	float amount, speed, h, v, t;
+	int opts;
+
+	speed = kudu_options_get_float_no(KO_CAMERA_SPEED, 0);
+
+	hscroll *= speed;
+	vscroll *= speed;
 
 	/* Swing, slide or zoom camera as appropriate */
 	switch (camera->mode) {
-		case CAMERA_MODE_SWING:
-			kudu_camera_swing(camera, hscroll, -vscroll, 0);
+		case CAMERA_MODE_TUMBLE:
+			h = hscroll;
+			v = -vscroll;
+			opts = kudu_options_get_int_no(KO_CAMERA_TUMBLE, 4);
+
+			if (opts & MOUSE_FLAG_REVERSE_X) h = -h;
+			if (opts & MOUSE_FLAG_REVERSE_Y) v = -v;
+
+			if (opts & MOUSE_FLAG_SWOP_XY) {
+				t = h;
+				h = v;
+				v = t;
+			}
+
+			kudu_camera_swing(camera, h, v, 0);
 			break;
-		case CAMERA_MODE_ZOOM: /* Not technically "zooming" we're just moving the camera forwards */
+		case CAMERA_MODE_DOLLY: /* Not technically "zooming" we're just moving the camera forwards */
+			opts = kudu_options_get_int_no(KO_CAMERA_DOLLY, 4);
 			amount = (kudu_camera_get_distance(camera) / 100);
-			kudu_camera_swing(camera, 0, 0, -(vscroll *amount));
+
+			if (opts & MOUSE_FLAG_SWOP_XY) {
+				v = -(hscroll * amount);
+				if (opts & MOUSE_FLAG_REVERSE_X) v = -v;
+			} else {
+				v = -(vscroll * amount);
+				if (opts & MOUSE_FLAG_REVERSE_Y) v = -v;
+			}
+
+			kudu_camera_swing(camera, 0, 0, v);
 			break;
-		case CAMERA_MODE_SLIDE:
-			kudu_camera_move(camera, (hscroll / 10), (vscroll / 10));
+		case CAMERA_MODE_TRACK:
+			h = (hscroll / 10);
+			v = (vscroll / 10);
+			opts = kudu_options_get_int_no(KO_CAMERA_TRACK, 4);
+
+			if (opts & MOUSE_FLAG_REVERSE_X) h = -h;
+			if (opts & MOUSE_FLAG_REVERSE_Y) v = -v;
+
+			if (opts & MOUSE_FLAG_SWOP_XY) {
+				t = h;
+				h = v;
+				v = t;
+			}
+
+			kudu_camera_move(camera, h, v);
 			break;
 		default:	/* Camera is in fixed position mode - do nothing */
 			return FALSE;

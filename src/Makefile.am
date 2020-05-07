@@ -36,7 +36,8 @@ kudu_SOURCES = kudu.c kudu.h \
 		sequence.c sequence.h \
 		toolbar.c toolbar.h \
 		joints_edit.c joints_edit.h \
-		uiplugin.c uiplugin.h 
+		uiplugin.c uiplugin.h \
+		gui_options.c gui_options.h
 
 AM_CPPFLAGS = -DKUDU_DATADIR=\"$(pkgdatadir)\"
 LIBS =  @LIBS@ @GSTUFF_LIBS@ @GTKGLEXT_LIBS@

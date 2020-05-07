@@ -1,1 +1,26 @@
-I will start maintaning a changelog sometime...
+Format of Changelog:
+I will enter here whenever I have updated/changed/fixed or written something new that I think is worthwile mentioning...
+I will top post (i.e. the most recent entry will be at the top - just under this)
+Date format is Day-Month-Year
+
+
+
+13-09-2006:
+	* Launching new release, version 0.1.2.
+
+12-09-2006:
+	* Basically all (currently) configurable points are now in the preferences dialog.
+	* Fixed "missing" splash screen bug from last release... (added it to the Makefile)
+	* Added option to configure to disable python.
+	* Stepped version up to 0.1.2
+
+11-09-2006:
+	* Some more work on the preferences dialog...
+	* Added navigation profiles... may need some "fine tuning" will have to rely on feedback for that.
+	  Currently includes: Mirai, Nendo, Maya, 3DS Max, Blender and MotionBuilder...
+
+12-08-2006:
+	* Added an option to allow sharing of render settings across the various modes,
+	  instead of individual settings for each mode.
+	* Began work on a preferences dialog.
+

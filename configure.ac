@@ -1,6 +1,6 @@
 AC_PREREQ(2.59)
 
-AC_INIT([kudu],[0.1.0],[redarrow@users.sourceforge.net])
+AC_INIT([kudu],[0.1.2],[redarrow@users.sourceforge.net])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/globals.h])
 AC_CONFIG_HEADER([src/config.h])

@@ -270,6 +270,7 @@ GtkWidget *kudu_gui_main_menu_bar_build(GtkWindow *window, GtkAccelGroup *accel_
 
 	KM_ITEM("Materials...", KM_EDIT_MATERIALS, "<ctrl>M");
 	KM_ITEM("Scripts...", KM_EDIT_SCRIPTS, NULL);
+	KM_ITEM("Preferences...", KM_EDIT_PREFERENCES, NULL);
 
 	kudu_menu_pop();
 

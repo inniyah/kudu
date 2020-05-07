@@ -61,9 +61,9 @@
 #define KUDU_DATADIR ../
 #endif
 
-#define KUDU_IMAGES_DIR KUDU_DATADIR"/images/"
+/*#define KUDU_IMAGES_DIR KUDU_DATADIR"/images/"
 #define KUDU_SCRIPTS_DIR KUDU_DATADIR"/scripts/"
-#define KUDU_EXAMPLES_DIR KUDU_DATADIR"/examples/"
+#define KUDU_EXAMPLES_DIR KUDU_DATADIR"/examples/"*/
 
 /* Definitions */
 
@@ -96,6 +96,12 @@
 #define MOUSE_RIGHT_BUTTON 3
 #define MOUSE_WHEEL_UP 4
 #define MOUSE_WHEEL_DOWN 5
+#define MOUSE_USE_KEY 10
+
+#define MOUSE_FLAG_REVERSE_X 1
+#define MOUSE_FLAG_REVERSE_Y 2
+#define MOUSE_FLAG_SWOP_XY 4
+
 #define BUTTON_DOWN 1
 #define BUTTON_UP 2
 
@@ -174,11 +180,11 @@
 #define PLAYBACK_CAMERA 32
 #define PO_SHOW_NORMALS 64
 
-#define CAMERA_MODE_FIXED 0
+/*#define CAMERA_MODE_FIXED 0*/
 #define CAMERA_MODE_SWING 1
 #define CAMERA_MODE_ZOOM 2
 #define CAMERA_MODE_SLIDE 4
-#define CAMERA_MODE_RESET 5
+/*#define CAMERA_MODE_RESET 5*/
 
 
 #define JOINT_MODE_FIXED 0
@@ -315,6 +321,16 @@ typedef enum {
 	BONE_MODE_MOVEZ,
 } K_BONE_MODE;
 
+typedef enum {
+	CAMERA_MODE_ANY,
+
+	CAMERA_MODE_FIXED,
+	CAMERA_MODE_TUMBLE,
+	CAMERA_MODE_DOLLY,
+	CAMERA_MODE_TRACK,
+	CAMERA_MODE_RESET,
+} K_CameraMode;
+
 /* Structure Declarations */
 
 typedef struct _KuduScript {
@@ -340,6 +356,9 @@ typedef struct {
 	int ortho;
 	int mode;
 	int old_mode;
+	int last_stack_operation;
+	K_CameraMode mode_stack[4];
+	int cmode;
 	float old_position[3];
 	float position[3];
 	float focus[3];

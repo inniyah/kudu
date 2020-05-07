@@ -1,33 +1,19 @@
-Kudu-0.1.0 released! 30 July 2006
-==========================================
+Kudu-0.1.2
+==========
 
-Welcome to the second official release of Kudu.
 This release should still be considered "pre-alpha".
-Animation sequencing is broken in this release, animation mode can only be used for posing.
+Animation sequencing is still broken in this release, animation mode can only be used for posing.
 
-New Features in Kudu include:
-* Import of Wavefront Objects (.obj)
-* Support for textures, many image formats supported through use of the GdkPixbuf library.
-  i.e. most common formats: bmp, jpeg, tga, png, gif etc.. might differ depending on library version.
-* Selectable joints between bones. Moving of joints not correctly implemented yet - attempting to do so will have strange results.
-* Startup splash screen!
+This release of Kudu introduces a preferences dialog.
+Navigation is now customizable - you can select a preset profile or manually tweak the settings.
 
-Improvments or corrections on existing features:
-* Moving / rotating bones has no affect on attached skin in "Editor" mode - only in "Animator" mode.
-* Bone rotations occur around local/global axes instead of old "longitude/latitude" style.
-* Added support for multiple bone attachments per vertex. Old model supported a max of two bones per vertex.
-* Replaced axii arrow indicators with RGB circles.
-* Numerous bugs fixed. - And probably a few new ones introduced ;-)
+The splash screen which was meant to be in the previous release, was infact not there due to a
+simple error in the Makefile... this has been rectified.
 
-Some other stuff perhaps that I've forgotten about... I have got to learn to make more frequent releases...
 
-Basically with this release of Kudu you should be able to:
-Import an object in wavefront format, build a skeleton structure, weight the mesh (skin) to the skeleton, save the object,
-switch to animation mode and pose your model.
-
-As with the previous release, feedback, bug reports, suggestions, patches etc.. are welcome.
+As with the all releases, feedback, bug reports, suggestions, patches etc.. are welcome.
 
 Thanks in this release goes to:
-Manuel Ponce: For designing the new splash screen graphics.
+Manuel Ponce: For designing the new splash screen graphics. (which is actually there this time).
 Nemyax: For many feature suggestions, advice and feedback.
 

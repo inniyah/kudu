@@ -39,11 +39,15 @@ enum {
 
 void kudu_gui_vertex_selection_do(GtkTreeModel *tree_model, GtkTreePath *path, GtkTreeIter *iter, gpointer data)
 {
-	float influence;
-	KuduBone *current_bone;
+	float influence = 45;
+	KuduBone *current_bone = NULL;
 
 	gtk_tree_model_get(tree_model, iter, BONE, &current_bone, -1);
 
+	if ((current_bone != NULL) && (fvertex != NULL)) {
+		influence = kudu_vertex_get_bone_influence(fvertex, current_bone);
+		gtk_spin_button_set_value(GTK_SPIN_BUTTON(attach_percent), influence);
+	}
 }
 
 void kudu_gui_vertex_properties_select_bone(GtkTreeSelection *tree_selection, gpointer data)
@@ -96,23 +100,6 @@ void kudu_gui_vertex_properties_attach_percent(GtkWidget *widget, GtkTreeSelecti
 
 	gtk_tree_selection_selected_foreach(tree_selection, kudu_gui_vertex_selection_set_influence, &influence);
 
-/*	KuduVertex *current_vertex;
-	GtkTreeIter iter;
-	GtkTreeModel *model;*/
-
-	/*if (gv_selected_bone == NULL) return;*/
-
-	/* Set the influence value for gv_selected_bone on each vertex in the selection list */
-	/*if (kudu_selection_list_for_each_do(gv_selection_list)) {
-		while ((current_vertex = (KuduVertex*)kudu_selection_list_next_do()) != NULL) {
-			kudu_vertex_set_bone_influence(current_vertex, gv_selected_bone, influence);
-		}
-	}*/
-
-	/* Update the apropriate progress bar in the tree_view list */
-	/*if (gtk_tree_selection_get_selected(bone_list_selection, &model, &iter)) {
-		gtk_list_store_set(bone_list, &iter, BONE_INFLUENCE, influence,  -1);
-	}*/
 }
 
 void kudu_gui_vertex_properties_auto_balance(GtkWidget *widget, GtkTreeSelection *tree_selection)
@@ -180,11 +167,13 @@ int kudu_gui_vertex_properties_edit(KuduObject *object, KuduSelectionList *selec
 	/* Set the global selection list pointer to point to this list */
 	gv_selection_list = selected;
 
-	fvertex = kudu_selection_list_get_first_item(selected);
+	fvertex = (KuduVertex*)kudu_selection_list_get_first_item(selected);
 
-/*	if (kudu_selection_list_for_each_do(selected)) {
+	if (kudu_selection_list_for_each_do(selected)) {
 		while ((current_vertex = (KuduVertex*)kudu_selection_list_next_do()) != NULL) {
-			if (fvertex == NULL) fvertex = current_vertex;*/
+		}
+	}
+
 		/*	attached_percent += current_vertex->attached_percent;*/
 		/*	if (selected_bone == NULL) selected_bone = current_vertex->bone;
 			if (selected_bone != NULL) bone_id = selected_bone->id;*/
@@ -399,7 +388,8 @@ int kudu_gui_vertex_properties_reset(KuduSelectionList *selected_items)
 
 	if (kudu_selection_list_for_each_do(selected)) {
 		while ((current_vertex = (KuduVertex*)kudu_selection_list_next_do()) != NULL) {
-			kudu_vertex_detach(current_vertex);
+			/*kudu_vertex_detach(current_vertex);*/
+			kudu_vertex_remove_all_bones(current_vertex);
 		}
 	}
 

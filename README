@@ -1,4 +1,4 @@
-Kudu Animator 0.1.0
+Kudu Animator 0.1.2
 ===================
 
 Welcome and thanks for downloading Kudu!
@@ -15,6 +15,7 @@ contributions. - This is a work in progress.
 Installing Kudu:
 ================
 For installation notes, please see the file INSTALL.
+- Not applicable in the case of a binary release.
 
 
 License:

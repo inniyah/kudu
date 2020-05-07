@@ -255,6 +255,8 @@ GtkWidget *kudu_main_toolbar_build(GtkAccelGroup *accel_group, GCallback action)
 {
 	GtkWidget *toolbar;
 	GtkToolItem *tool_item;
+	const char *image_dir = kudu_options_get_string(KO_DIR_KUDU_IMAGES);
+	char *imgf = (char*)malloc(strlen(image_dir)+50);
 
 	kudu_toolbar_store_init();
 
@@ -268,21 +270,35 @@ GtkWidget *kudu_main_toolbar_build(GtkAccelGroup *accel_group, GCallback action)
 	kudu_toolbar_add_seperator(TRUE, FALSE);
 
 	kudu_toolbar_new_radio_group();
-	KT_RADIO(KT_SELECT_OBJECTS, "Objects", KUDU_IMAGES_DIR"object.png", "<ctrl><shift>O");
-	KT_RADIO(KT_SELECT_BONES, "Bones", KUDU_IMAGES_DIR"bone.png", "<ctrl><shift>B");
-	KT_RADIO(KT_SELECT_JOINTS, "Joints", KUDU_IMAGES_DIR"joint.png", "<ctrl><shift>J");
+	sprintf(imgf, "%sobject.png\0", image_dir);
+	KT_RADIO(KT_SELECT_OBJECTS, "Objects", imgf, "<ctrl><shift>O");
+
+	sprintf(imgf, "%sbone.png\0", image_dir);
+	KT_RADIO(KT_SELECT_BONES, "Bones", imgf, "<ctrl><shift>B");
+
+	sprintf(imgf, "%sjoint.png\0", image_dir);
+	KT_RADIO(KT_SELECT_JOINTS, "Joints", imgf, "<ctrl><shift>J");
 
 	kudu_toolbar_add_seperator(TRUE, FALSE);
 
-	KT_RADIO(KT_SELECT_VERTICES, "Vertices", KUDU_IMAGES_DIR"vertex.png", "<ctrl><shift>V");
-	KT_RADIO(KT_SELECT_EDGES, "Edges", KUDU_IMAGES_DIR"edge.png", "<ctrl><shift>E");
-	KT_RADIO(KT_SELECT_FACES, "Faces", KUDU_IMAGES_DIR"face.png", "<ctrl><shift>F");
-	KT_RADIO(KT_SELECT_SHAPES, "Shapes", KUDU_IMAGES_DIR"shape.png", "<ctrl><shift>S");
+	sprintf(imgf, "%svertex.png\0", image_dir);
+	KT_RADIO(KT_SELECT_VERTICES, "Vertices", imgf, "<ctrl><shift>V");
+
+	sprintf(imgf, "%sedge.png\0", image_dir);
+	KT_RADIO(KT_SELECT_EDGES, "Edges", imgf, "<ctrl><shift>E");
+
+	sprintf(imgf, "%sface.png\0", image_dir);
+	KT_RADIO(KT_SELECT_FACES, "Faces", imgf, "<ctrl><shift>F");
+
+	sprintf(imgf, "%sshape.png\0", image_dir);
+	KT_RADIO(KT_SELECT_SHAPES, "Shapes", imgf, "<ctrl><shift>S");
 
 	kudu_toolbar_add_seperator(TRUE, FALSE);
 	kudu_toolbar_add_seperator(FALSE, TRUE);
 
 	toolbar = kudu_toolbar_end();
+
+	free(imgf);
 
 	return toolbar;
 }

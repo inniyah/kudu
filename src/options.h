@@ -36,9 +36,14 @@ typedef enum {
 	KO_WINDOW_POSITION,
 	KO_WINDOW_SIZE,
 	KO_WINDOW_MAXED,
+
 	KO_MOUSE_SCROLL_ZOOM,
+	KO_MOUSE_SCROLL_REVERSE,
+
 	KO_USER_ACCEL_KEYS,
 	KO_SHOW_SPLASH,
+
+	KO_SHARE_VIEW_SETTINGS,
 
 	KO_BONE_DIALOG_POSITION,
 	KO_BONE_DIALOG_LOCK_NAME,
@@ -46,12 +51,23 @@ typedef enum {
 	/* Camera viewport */
 	KO_VIEW_ORTHOGRAPHIC,
 
+	/* Viewport camera control */
+	KO_CAMERA_SPEED,
+	KO_CAMERA_GLOBALS,
+	KO_CAMERA_TUMBLE,
+	KO_CAMERA_TRACK,
+	KO_CAMERA_DOLLY,
+
 	/* Paths */
 	KO_DIR_USER_HOME,
 	KO_DIR_LAST_OPEN,
 	KO_DIR_LAST_SAVE,
 	KO_DIR_USER_DATA,
 	KO_DIR_USER_SCRIPTS,
+	KO_DIR_KUDU_ROOT,
+	KO_DIR_KUDU_IMAGES,
+	KO_DIR_KUDU_SCRIPTS,
+	KO_DIR_KUDU_EXAMPLES,
 
 	/* Grid and axes */
 	KO_GRID_COLOUR,
@@ -100,9 +116,14 @@ static const char *K_OPTION_NAME[] = {
 	"KO_WINDOW_POSITION",
 	"KO_WINDOW_SIZE",
 	"KO_WINDOW_MAXED",
+
 	"KO_MOUSE_SCROLL_ZOOM",
+	"KO_MOUSE_SCROLL_REVERSE",
+
 	"KO_USER_ACCEL_KEYS",
 	"KO_SHOW_SPLASH",
+
+	"KO_SHARE_VIEW_SETTINGS",
 
 	"KO_BONE_DIALOG_POSITION",
 	NULL,
@@ -110,10 +131,21 @@ static const char *K_OPTION_NAME[] = {
 	/* Camera viewport */
 	"KO_VIEW_ORTHOGRAPHIC",
 
+	/* Viewport camera control */
+	"KO_CAMERA_SPEED",
+	"KO_CAMERA_GLOBALS",
+	"KO_CAMERA_TUMBLE",
+	"KO_CAMERA_TRACK",
+	"KO_CAMERA_DOLLY",
+
 	/* Paths */
 	NULL,
 	"KO_DIR_LAST_OPEN",
 	"KO_DIR_LAST_SAVE",
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 	NULL,
 	NULL,
 
@@ -185,6 +217,11 @@ int kudu_options_strlen(KuduOption);
 
 int kudu_options_set(KuduOption, int, int, ...);
 int kudu_options_get(KuduOption, int, ...);
+
+int kudu_options_get_guess_type(KuduOption);
+
+int kudu_options_configure_user_dirs(void);
+int kudu_options_locate_kudu_root(void);
 
 int kudu_options_set_defaults(void);
 int kudu_options_save_to_file(char*);

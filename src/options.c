@@ -478,6 +478,16 @@ int kudu_options_get(KuduOption option, int type, ...)
 	return TRUE;
 }
 
+/* Returns the "guess" type of an option. The guess type is the last known type set */
+int kudu_options_get_guess_type(KuduOption option)
+{
+	if ((option_list == NULL) || (option > KO_OPTIONS_COUNT)) return FALSE;
+
+	KuduOptionItem *opt = &option_list[option];
+
+	return opt->guess_type;
+}
+
 
 /* Setup the paths to the user dirs */
 /* or create them if they don't exist */
@@ -517,6 +527,48 @@ int kudu_options_configure_user_dirs(void)
 	return TRUE;
 }
 
+/* Locate the kudu "root" dir ... by default this would be /usr/local/share/kudu */
+int kudu_options_locate_kudu_root(void)
+{
+	if (option_list == NULL) return FALSE;
+
+	struct stat fstat;
+	int success = TRUE;
+
+	if (stat(KUDU_DATADIR"/images", &fstat) >= 0) {
+		kudu_options_set_string(KO_DIR_KUDU_ROOT, KUDU_DATADIR);
+	} else if (stat("./images", &fstat) >= 0) {
+		kudu_options_set_string(KO_DIR_KUDU_ROOT, ".");
+	} else if (stat("../images", &fstat) >= 0) {
+		kudu_options_set_string(KO_DIR_KUDU_ROOT, "..");
+	} else {
+		printf("Warning: Unable to locate data dir...\n");
+		kudu_options_set_string(KO_DIR_KUDU_ROOT, ".");
+		success = FALSE;
+	}
+
+	const char *root = kudu_options_get_string(KO_DIR_KUDU_ROOT);
+	char *subd = (char*)malloc(strlen(root)+50);
+
+	sprintf(subd, "%s/images/\0", root);
+	kudu_options_set_string(KO_DIR_KUDU_IMAGES, subd);
+
+	sprintf(subd, "%s/scripts/\0", root);
+	kudu_options_set_string(KO_DIR_KUDU_SCRIPTS, subd);
+
+	sprintf(subd, "%s/examples/\0", root);
+	kudu_options_set_string(KO_DIR_KUDU_EXAMPLES, subd);
+
+	free(subd);
+
+	/*printf("DATA_DIR: %s\n", kudu_options_get_string(KO_DIR_KUDU_ROOT));
+	printf("IMAGES_DIR: %s\n", kudu_options_get_string(KO_DIR_KUDU_IMAGES));
+	printf("SCRIPTS_DIR: %s\n", kudu_options_get_string(KO_DIR_KUDU_SCRIPTS));
+	printf("EXAMPLES_DIR: %s\n", kudu_options_get_string(KO_DIR_KUDU_EXAMPLES));*/
+
+	return success;
+}
+
 
 /* Set default options */
 /* configure directories */
@@ -535,7 +587,9 @@ int kudu_options_set_defaults(void)
 	kudu_options_set_string(KO_DIR_USER_HOME, home);
 	free(home);
 
-	kudu_options_set_string(KO_DIR_LAST_OPEN, KUDU_EXAMPLES_DIR);
+	kudu_options_locate_kudu_root();
+
+	kudu_options_set_string(KO_DIR_LAST_OPEN, kudu_options_get_string(KO_DIR_KUDU_EXAMPLES));
 
 	kudu_options_enable(KO_WINDOW_POSITION);
 	kudu_options_set(KO_WINDOW_POSITION, KO_TYPE_INT, 2, 50, 50);
@@ -545,6 +599,8 @@ int kudu_options_set_defaults(void)
 
 	kudu_options_enable(KO_WINDOW_MAXED);
 	kudu_options_enable(KO_USER_ACCEL_KEYS);
+
+	kudu_options_disable(KO_SHARE_VIEW_SETTINGS);
 
 	kudu_options_enable(KO_SHOW_SPLASH);
 
@@ -587,6 +643,15 @@ int kudu_options_set_defaults(void)
 
 	kudu_options_enable(KO_MOUSE_SCROLL_ZOOM);
 	kudu_options_set_float_no(KO_MOUSE_SCROLL_ZOOM, 0, 10.0);
+	kudu_options_disable(KO_MOUSE_SCROLL_REVERSE);
+
+	kudu_options_set_float_no(KO_CAMERA_SPEED, 0, 1.0);
+
+	/* Default viewport camera control */
+	kudu_options_set(KO_CAMERA_GLOBALS, KO_TYPE_INT, 2, MOUSE_LEFT_BUTTON, MOUSE_RIGHT_BUTTON);
+	kudu_options_set(KO_CAMERA_TUMBLE, KO_TYPE_INT, 6, MOUSE_MIDDLE_BUTTON, 0, CAMERA_MODE_FIXED, 0, 0, 0);
+	kudu_options_set(KO_CAMERA_TRACK, KO_TYPE_INT, 6, MOUSE_USE_KEY, 0, CAMERA_MODE_TUMBLE, 1, 0, 113);
+	kudu_options_set(KO_CAMERA_DOLLY, KO_TYPE_INT, 6, MOUSE_MIDDLE_BUTTON, 0, CAMERA_MODE_TUMBLE, 1, 0, 0);
 
 
 	kudu_options_configure_user_dirs();
@@ -627,6 +692,7 @@ int kudu_options_save_to_file(char *filename)
 
 		/* Enabled flag */
 		if (opt->enabled) fprintf(file, "enabled = true\n");
+		else	fprintf(file, "enabled = false\n");
 
 		/* If option buffer is empty, then thats all for this option */
 		if (opt->opt_size == 0) {

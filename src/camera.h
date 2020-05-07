@@ -48,7 +48,10 @@ int kudu_camera_lookat(KuduCamera*, float, float, float);
 int kudu_camera_set_gl_viewpoint(KuduCamera*);
 int kudu_camera_set_gl_matrix(KuduCamera*, int, int);
 int kudu_camera_set_gl_pick_matrix(KuduCamera*, int, int, int, int);
-int kudu_camera_set_mode(KuduCamera*, int);
+int kudu_camera_set_mode(KuduCamera*);
+int kudu_camera_push_mode(KuduCamera*, K_CameraMode);
+int kudu_camera_pop_mode(KuduCamera*);
+int kudu_camera_pop_all_modes(KuduCamera*);
 int kudu_camera_mouse_action(KuduCamera*, float, float);
 
 #endif /* CAMERA_H_INCLUDED */

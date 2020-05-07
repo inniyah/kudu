@@ -8,6 +8,7 @@ images_DATA = \
 	bone.png \
 	object.png \
 	logo.png \
-	joint.png
+	joint.png \
+	splash.png
 
 EXTRA_DIST=$(images_DATA)

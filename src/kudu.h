@@ -58,6 +58,7 @@
 #include "joints_edit.h"
 #include "uiplugin.h"
 #include "about.h"
+#include "gui_options.h"
 
 
 

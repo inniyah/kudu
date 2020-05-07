@@ -23,6 +23,7 @@
 #define TOOLBAR_H_INCLUDED
 
 #include "globals.h"
+#include "options.h"
 
 typedef enum {
 	KT_FILE_OPEN,

@@ -90,7 +90,7 @@ typedef enum {
 
 	KM_EDIT_MATERIALS,
 	KM_EDIT_SCRIPTS,
-
+	KM_EDIT_PREFERENCES,
 
 	/* Frames menu */
 	KM_FRAMES,

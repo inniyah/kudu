@@ -42,6 +42,7 @@
 #define DRAW_SKELETON_NONE_SELECTED 256
 
 void kudu_graphics_colours_reload(void);
+unsigned int kudu_graphics_gen_gl_lists(unsigned int);
 void kudu_draw_axes(void);
 int kudu_draw_axes_labels(KuduCamera*);
 int kudu_draw_grid(int, int, float, int);

@@ -19,18 +19,28 @@
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA  */
 /*                                                                            */
 /******************************************************************************/
-#ifndef ABOUT_H_INCLUDED
-#define ABOUT_H_INCLUDED
+#ifndef GUI_OPTIONS_H_INCLUDED
+#define GUI_OPTIONS_H_INCLUDED
 
 #include "globals.h"
 #include "options.h"
 
-int kudu_about_printout(void);
-GtkWidget *kudu_about_splash_window(void);
-void kudu_about_splash_display(void);
-void kudu_about_splash_set_parent(GtkWindow*);
-gboolean kudu_about_splash_close(void);
-void kudu_about_splash_message(char*);
+typedef enum {
+	NAVI_PROFILE_MIRAI,
+	NAVI_PROFILE_NENDO,
+	NAVI_PROFILE_MAYA,
+	NAVI_PROFILE_3DS_MAX,
+	NAVI_PROFILE_BLENDER,
+	NAVI_PROFILE_MOTIONBUILDER,
+	NAVI_NUM_PROFILES,
+	NAVI_PROFILE_CUSTOM,
+} K_NavProfiles;
 
-#endif /* ABOUT_H_INCLUDED */
+void kudu_gui_options_checkbox_callback(GtkWidget*, gpointer);
+GtkWidget *kudu_gui_options_new_checkbox(char*, KuduOption, int);
+
+void kudu_gui_options_navigation_dialog(GtkWidget*, gpointer);
+void kudu_gui_options_dialog_show(void);
+
+#endif /* GUI_OPTIONS_H_INCLUDED */
 
