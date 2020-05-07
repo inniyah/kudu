@@ -1,0 +1,13 @@
+*.o
+*.Po
+*~
+autom4te.cache
+config.log
+config.status
+Makefile.in
+Makefile
+configure
+src/config.h.in
+src/config.h
+src/stamp-h1
+src/kudu
