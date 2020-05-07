@@ -40,7 +40,7 @@ kudu_SOURCES = kudu.c kudu.h \
 		gui_options.c gui_options.h
 
 AM_CPPFLAGS = -DKUDU_DATADIR=\"$(pkgdatadir)\" @GSTUFF_CFLAGS@ @GTKGLEXT_CFLAGS@
-LIBS =  @LIBS@ @GSTUFF_LIBS@ @GTKGLEXT_LIBS@
+LIBS =  @LIBS@ @GSTUFF_LIBS@ @GTKGLEXT_LIBS@ -lm
 
 if SUPPORT_PYTHON
 kudu_SOURCES += scripts.c scripts.h \
