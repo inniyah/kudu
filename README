@@ -1,0 +1,31 @@
+Kudu Animator 0.0.1
+===================
+
+Welcome and thanks for downloading Kudu!
+
+Kudu is currently in pre-alpha stage.
+Please don't expect full blown functionality and
+hassle free operation. Feel free to make suggestions,
+bug-reports and even (if you are a coder) patch
+contributions. - This is a work in progress.
+
+
+Installing Kudu:
+================
+For installation notes, please see the file INSTALL.
+
+
+License:
+========
+Kudu is released under the GNU General Public License (GPL)
+for more info see the file COPYING.
+
+
+Contact:
+========
+Daniel Pekelharing <redarrow@users.sourceforge.net>
+
+For info on the Kudu users mailing list see:
+http://lists.sourceforge.net/lists/listinfo/kudu-users
+
+

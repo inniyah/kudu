@@ -1,0 +1,62 @@
+Compiling and Installing Kudu
+=============================
+
+Before attempting to compile Kudu, please first ensure
+that you have all the required librarys, you will need:
+=======================================================
+Gtk+ 2.6.7
+http://www.gtk.org/
+
+GtkGLExt 1.0.6
+http://gtkglext.sourceforge.net/
+
+You will also An OpenGL capable graphics card with drivers,
+or MESA (see http://www.mesa.org/).
+
+
+Optional, if you do not have these Kudu will simply compile
+without some features.
+===========================================================
+Python 2.4
+http://www.python.org/
+
+
+===========================================================
+All required versions are not for certain the minimum under
+which Kudu will compile, I have however not tested under
+anything less than indicated. If you encounter a problem
+whilst compiling, please first verify whether you have
+these versions.
+===========================================================
+
+
+Kudu uses the GNU Autoconf tools for compilation,
+thus the steps are simple.
+=================================================
+From a terminal simply cd into the directory where you
+placed the Kudu files, and run:
+
+./configure
+make
+make install
+
+Depending on where you are installing Kudu, and your user privileges,
+you might need to run "make install" as root (super user). To accomplish
+that you can run:
+
+su -c "make install"
+
+
+You can run Kudu with:
+======================
+/usr/local/bin/kudu
+
+Unless you configured it to install elsewhere.
+Of course if /usr/local/bin is in your PATH you can just run: kudu
+
+
+==================================================================
+If you encounter any errors with compiling, you can contact me at:
+<redarrow@users.sourceforge.net>
+
+Daniel Pekelharing
