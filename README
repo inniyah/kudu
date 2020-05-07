@@ -1,3 +1,10 @@
+This is a fork of https://sourceforge.net/projects/kudu/ (2013-03-22)
+
+Kudu is a Gtk+ and OpenGL powered animation package, which relies moslty on skeletal animation and has an interface loosely based on the style of Wings3D.
+
+License: GNU General Public License version 2.0 (GPLv2)
+
+
 Kudu Animator 0.1.2
 ===================
 
